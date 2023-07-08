@@ -1,0 +1,4 @@
+# Aika
+
+ChatGPT power waifu.
+
