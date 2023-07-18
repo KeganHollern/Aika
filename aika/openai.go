@@ -111,7 +111,7 @@ func (ai *OpenAI) Query(
 	resp, err := ai.Client.CreateChatCompletion(
 		ctx,
 		openai.ChatCompletionRequest{
-			Model:     openai.GPT3Dot5Turbo0613,
+			Model:     openai.GPT40613,
 			Messages:  messages,
 			Functions: ai.definitions,
 		},

@@ -103,6 +103,7 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 	// send typing
 	s.ChannelTyping(m.ChannelID)
 	response, err := chat.Send(m.Author.Username, msgToSend)
+
 	if err != nil {
 		if errors.Is(err, aika.ErrChatInUse) {
 			s.ChannelMessageSendReply(m.ChannelID, "I am busy with another request. Please try again later.", m.Reference())
@@ -110,5 +111,9 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 		}
 		s.ChannelMessageSend(m.ChannelID, fmt.Errorf("sorry aika failed to respond; %w", err).Error())
 	}
-	s.ChannelMessageSend(m.ChannelID, response)
+	if len(response) > 2000 {
+		s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(response))
+	} else {
+		s.ChannelMessageSend(m.ChannelID, response)
+	}
 }
