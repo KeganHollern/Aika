@@ -34,7 +34,9 @@ func (bot *AikaBot) Start(wg *sync.WaitGroup) error {
 	dg.AddHandler(bot.messageCreate)
 
 	// In this example, we only care about receiving message events.
-	dg.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
+	dg.Identify.Intents = discordgo.IntentsAll
+
+	dg.StateEnabled = true
 
 	// Open a websocket connection to Discord and begin listening.
 	err = dg.Open()
@@ -83,15 +85,79 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 		bot.channels = make(map[string]*aika.Chat)
 	}
 
+	participants := []string{}
+
+	// probably not needed?
+	/*
+		err := s.RequestGuildMembers(m.GuildID, "", 0, "0", true) // update all presense of guild members
+		if err != nil {
+			logrus.WithError(err).Errorln("failed to request guild member update")
+			return
+		}
+	*/
+
+	gd, err := s.State.Guild(m.GuildID)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to get guild from state")
+		return
+	}
+
+	for _, member := range gd.Members {
+		// aika can't see other bots (only herself)
+		if member.User.Bot &&
+			member.User.ID != s.State.User.ID {
+			continue
+		}
+
+		presence, err := s.State.Presence(m.GuildID, member.User.ID)
+		if errors.Is(err, discordgo.ErrStateNotFound) {
+			continue // user likely offline or some shit
+		}
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("username", member.User.Username).
+				WithField("userid", member.User.ID).
+				Warnln("failed to get presence")
+			continue
+		}
+
+		// ??? what the fuck?
+		// we don't get presence info when they're offline so what the fuck?
+		if presence.Status == discordgo.StatusOffline ||
+			presence.Status == discordgo.StatusInvisible {
+			continue
+		}
+
+		// TODO: filter for channel permissions
+		perms, err := s.State.UserChannelPermissions(member.User.ID, m.ChannelID)
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("username", member.User.Username).
+				WithField("userid", member.User.ID).
+				Warnln("failed to get user permissions")
+		}
+		logrus.
+			WithField("username", member.User.Username).
+			WithField("userid", member.User.ID).
+			WithField("permissions", perms).
+			Debugln("user channel permission value")
+
+		participants = append(participants, member.User.Username)
+	}
+
 	chat, exists := bot.channels[m.ChannelID]
 	if !exists {
 		chat = &aika.Chat{
 			API:     bot.API,
-			Members: []string{}, // TODO: channel participant usernames
+			Members: participants, // TODO: channel participant usernames
 			History: []openai.ChatCompletionMessage{},
 			Mutex:   sync.Mutex{},
 		}
 		bot.channels[m.ChannelID] = chat
+	} else {
+		chat.Members = participants // update participants
 	}
 
 	// clean mentions

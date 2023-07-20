@@ -29,40 +29,6 @@ func main() {
 		logrus.Fatalln("missing OPENAI_KEY environment variable")
 	}
 
-	// init OpenAI Client
-	client := openai.NewClient(apiKey)
-	// init Aika
-	ai := aika.OpenAI{
-		Client:  client,
-		Timeout: time.Second * 20,
-	}
-
-	// add some functionality to aika
-	err := ai.AddFunction(actions.Function_GenRandomNumber)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add random function")
-	}
-	err = ai.AddFunction(actions.Function_GetWaifuCategories)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add waifu category function")
-	}
-	err = ai.AddFunction(actions.Function_GetWaifuSfw)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add sfw waifu function")
-	}
-	err = ai.AddFunction(actions.Function_GetWaifuNsfw)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add nsfw waifu function")
-	}
-	err = ai.AddFunction(actions.Function_GetAnime)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add anime function")
-	}
-	err = ai.AddFunction(actions.Function_SearchWeb)
-	if err != nil {
-		logrus.WithError(err).Fatalln("failed to add anime function")
-	}
-
 	// S3 configuration
 	var s3cfg *s3.S3Config
 	secret, exists := os.LookupEnv("S3_SECRET")
@@ -93,6 +59,40 @@ func main() {
 		logrus.Warnln("missing S3_SECRET environment variable")
 	}
 
+	// init OpenAI Client
+	client := openai.NewClient(apiKey)
+
+	// init Aika
+	ai := aika.OpenAI{
+		Client:  client,
+		Timeout: time.Second * 60,
+	}
+
+	// add some functionality to aika
+	err := ai.AddFunction(actions.Function_GenRandomNumber)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add random function")
+	}
+	err = ai.AddFunction(actions.Function_GetWaifuCategories)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add waifu category function")
+	}
+	err = ai.AddFunction(actions.Function_GetWaifuSfw)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add sfw waifu function")
+	}
+	err = ai.AddFunction(actions.Function_GetWaifuNsfw)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add nsfw waifu function")
+	}
+	err = ai.AddFunction(actions.Function_GetAnime)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add anime function")
+	}
+	err = ai.AddFunction(actions.Function_SearchWeb)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to add anime function")
+	}
 	openAIActions := actions.OpenAI{
 		Client: client,
 		S3:     s3cfg,
