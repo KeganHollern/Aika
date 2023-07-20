@@ -38,7 +38,7 @@ func (s3Config *S3Config) DownloadImageAndUploadToS3(url, key string) error {
 	// Create a new session with the custom endpoint and credentials
 	logrus.WithField("cfg", s3Config).Info("S3 CONFIGURATION DUMP")
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("US-East"),
+		Region:      aws.String("auto"),
 		Endpoint:    aws.String(s3Config.Endpoint),
 		Credentials: credentials.NewStaticCredentials(s3Config.AccessKey, s3Config.SecretKey, ""),
 	})

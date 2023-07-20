@@ -90,12 +90,13 @@ func (ai *OpenAI) action_DallE(prompt string) (string, error) {
 		return oaiURL, nil
 	}
 
-	path := "dalle/" + uuid.NewString() + ".png"
+	path := "user-content/dalle/" + uuid.NewString() + ".png"
 	err = ai.S3.DownloadImageAndUploadToS3(oaiURL, path)
 	if err != nil {
 		logrus.WithError(err).Warnln("failed to upload to S3")
 		return oaiURL, nil
 	}
 
-	return "https://aika.ewr1.vultrobjects.com/" + path, nil
+	// TODO: a public URL for aika
+	return "https://pub-f2995484be8845ed9b9e13705cfa451d.r2.dev/" + path, nil
 }
