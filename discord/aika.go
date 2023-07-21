@@ -44,6 +44,22 @@ func (bot *AikaBot) Start(wg *sync.WaitGroup) error {
 		return fmt.Errorf("error opening connection; %w", err)
 	}
 
+	// log all guild names
+	for _, rootGd := range dg.State.Guilds {
+		gd, err := dg.Guild(rootGd.ID)
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("id", rootGd.ID).
+				Warnln("could not find guild data")
+		} else {
+			logrus.
+				WithField("name", gd.Name).
+				WithField("id", gd.ID).
+				Info("in guild")
+		}
+	}
+
 	go func() {
 		fmt.Println("Aika is now running.  Press CTRL-C to exit.")
 		sc := make(chan os.Signal, 1)
@@ -96,55 +112,62 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 		}
 	*/
 
-	gd, err := s.State.Guild(m.GuildID)
-	if err != nil {
-		logrus.WithError(err).Errorln("failed to get guild from state")
-		return
-	}
+	chat_name := fmt.Sprintf("DM @%s", m.Author.Username)
 
-	for _, member := range gd.Members {
-		// aika can't see other bots (only herself)
-		if member.User.Bot &&
-			member.User.ID != s.State.User.ID {
-			continue
-		}
-
-		presence, err := s.State.Presence(m.GuildID, member.User.ID)
-		if errors.Is(err, discordgo.ErrStateNotFound) {
-			continue // user likely offline or some shit
-		}
+	if m.GuildID != "" {
+		gd, err := s.State.Guild(m.GuildID)
 		if err != nil {
+			logrus.WithError(err).WithField("guild_id", m.GuildID).Errorln("failed to get guild from state")
+			return
+		}
+		chat_name = fmt.Sprintf("Guild: %s [%s]", gd.Name, gd.ID)
+
+		for _, member := range gd.Members {
+			// aika can't see other bots (only herself)
+			if member.User.Bot &&
+				member.User.ID != s.State.User.ID {
+				continue
+			}
+
+			presence, err := s.State.Presence(m.GuildID, member.User.ID)
+			if errors.Is(err, discordgo.ErrStateNotFound) {
+				continue // user likely offline or some shit
+			}
+			if err != nil {
+				logrus.
+					WithError(err).
+					WithField("username", member.User.Username).
+					WithField("userid", member.User.ID).
+					Warnln("failed to get presence")
+				continue
+			}
+
+			// ??? what the fuck?
+			// we don't get presence info when they're offline so what the fuck?
+			if presence.Status == discordgo.StatusOffline ||
+				presence.Status == discordgo.StatusInvisible {
+				continue
+			}
+
+			// TODO: filter for channel permissions
+			perms, err := s.State.UserChannelPermissions(member.User.ID, m.ChannelID)
+			if err != nil {
+				logrus.
+					WithError(err).
+					WithField("username", member.User.Username).
+					WithField("userid", member.User.ID).
+					Warnln("failed to get user permissions")
+			}
 			logrus.
-				WithError(err).
 				WithField("username", member.User.Username).
 				WithField("userid", member.User.ID).
-				Warnln("failed to get presence")
-			continue
-		}
+				WithField("permissions", perms).
+				Debugln("user channel permission value")
 
-		// ??? what the fuck?
-		// we don't get presence info when they're offline so what the fuck?
-		if presence.Status == discordgo.StatusOffline ||
-			presence.Status == discordgo.StatusInvisible {
-			continue
+			participants = append(participants, member.User.Username)
 		}
-
-		// TODO: filter for channel permissions
-		perms, err := s.State.UserChannelPermissions(member.User.ID, m.ChannelID)
-		if err != nil {
-			logrus.
-				WithError(err).
-				WithField("username", member.User.Username).
-				WithField("userid", member.User.ID).
-				Warnln("failed to get user permissions")
-		}
-		logrus.
-			WithField("username", member.User.Username).
-			WithField("userid", member.User.ID).
-			WithField("permissions", perms).
-			Debugln("user channel permission value")
-
-		participants = append(participants, member.User.Username)
+	} else {
+		participants = []string{m.Author.Username, s.State.User.Username}
 	}
 
 	chat, exists := bot.channels[m.ChannelID]
@@ -169,6 +192,13 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 	// send typing
 	s.ChannelTyping(m.ChannelID)
 	response, err := chat.Send(m.Author.Username, msgToSend)
+
+	logrus.
+		WithField("sender", m.Author.Username).
+		WithField("chat", chat_name).
+		WithField("message", msgToSend).
+		WithField("response", response).
+		Info("conversation log")
 
 	if err != nil {
 		if errors.Is(err, aika.ErrChatInUse) {

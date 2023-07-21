@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/sashabaranov/go-openai"
-	"github.com/sirupsen/logrus"
 )
 
 const system_message = `Your name is Aika. 
@@ -83,11 +82,6 @@ func (c *Chat) Send(sender string, message string) (string, error) {
 	if len(c.History) > max_history_messages {
 		c.History = c.History[len(c.History)-max_history_messages:]
 	}
-
-	logrus.WithField("sender", sender).
-		WithField("message", message).
-		WithField("response", msg).
-		Info("conversation log")
 
 	re := regexp.MustCompile(`(?m)^Aika:\s*`)
 	return replaceMarkdownLinks(re.ReplaceAllString(msg, "")), nil
