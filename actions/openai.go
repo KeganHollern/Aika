@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"aika/aika"
 	"aika/s3"
 	"context"
 	"encoding/json"
@@ -21,8 +20,8 @@ type OpenAI struct {
 	S3     *s3.S3Config
 }
 
-func (ai *OpenAI) GetFunction_DallE() aika.Function {
-	return aika.Function{
+func (ai *OpenAI) GetFunction_DallE() Function {
+	return Function{
 		Definition: definition_DallE,
 		Handler:    ai.handler_DallE,
 	}

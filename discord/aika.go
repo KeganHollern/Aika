@@ -2,6 +2,7 @@ package discord
 
 import (
 	"aika/aika"
+	"aika/premium"
 	"errors"
 	"fmt"
 	"os"
@@ -16,8 +17,9 @@ import (
 )
 
 type AikaBot struct {
-	ApiKey string
-	API    aika.OpenAI
+	ApiKey    string
+	API       aika.OpenAI
+	PremiumDB *premium.Servers
 
 	channels map[string]*aika.Chat
 }
@@ -56,6 +58,7 @@ func (bot *AikaBot) Start(wg *sync.WaitGroup) error {
 			logrus.
 				WithField("name", gd.Name).
 				WithField("id", gd.ID).
+				WithField("premium", bot.PremiumDB.IsPremium(gd.ID)).
 				Info("in guild")
 		}
 	}
@@ -173,6 +176,11 @@ func (bot *AikaBot) messageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 	chat, exists := bot.channels[m.ChannelID]
 	if !exists {
 		chat = &aika.Chat{
+			CTX: aika.ChatContext{
+				PremiumDB: bot.PremiumDB,
+				CID:       m.ChannelID,
+				GID:       m.GuildID,
+			},
 			API:     bot.API,
 			Members: participants, // TODO: channel participant usernames
 			History: []openai.ChatCompletionMessage{},

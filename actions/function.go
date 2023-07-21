@@ -1,4 +1,4 @@
-package aika
+package actions
 
 import (
 	"github.com/sashabaranov/go-openai"

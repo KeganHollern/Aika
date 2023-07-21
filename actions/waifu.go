@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"aika/aika"
 	"encoding/json"
 	"strings"
 
@@ -10,15 +9,15 @@ import (
 )
 
 var (
-	Function_GetWaifuCategories = aika.Function{
+	Function_GetWaifuCategories = Function{
 		Definition: definition_GetWaifuCategories,
 		Handler:    handler_GetWaifuCategories,
 	}
-	Function_GetWaifuSfw = aika.Function{
+	Function_GetWaifuSfw = Function{
 		Definition: definition_GetWaifuSfw,
 		Handler:    handler_GetWaifuSfw,
 	}
-	Function_GetWaifuNsfw = aika.Function{
+	Function_GetWaifuNsfw = Function{
 		Definition: definition_GetWaifuNsfw,
 		Handler:    handler_GetWaifuNsfw,
 	}

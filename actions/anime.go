@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"aika/aika"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,7 +11,7 @@ import (
 )
 
 var (
-	Function_GetAnime = aika.Function{
+	Function_GetAnime = Function{
 		Definition: definition_GetAnime,
 		Handler:    handler_FindAnime,
 	}

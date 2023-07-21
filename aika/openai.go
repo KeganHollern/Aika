@@ -1,6 +1,7 @@
 package aika
 
 import (
+	"aika/actions"
 	"context"
 	"errors"
 	"fmt"
@@ -14,17 +15,24 @@ const (
 	maxFailedCalls = 3
 )
 
+type LanguageModel string
+
+const (
+	LanguageModel_GPT4  LanguageModel = openai.GPT40613
+	LanguageModel_GPT35 LanguageModel = openai.GPT3Dot5Turbo0613
+)
+
 type OpenAI struct {
 	Client  *openai.Client
 	Timeout time.Duration
 
-	functions   map[string]Function
+	functions   map[string]actions.Function
 	definitions []openai.FunctionDefinition
 }
 
-func (ai *OpenAI) AddFunction(fnc Function) error {
+func (ai *OpenAI) AddFunction(fnc actions.Function) error {
 	if ai.functions == nil {
-		ai.functions = make(map[string]Function)
+		ai.functions = make(map[string]actions.Function)
 	}
 
 	_, exists := ai.functions[fnc.Definition.Name]
@@ -43,6 +51,8 @@ func (ai *OpenAI) GetResponse(
 	system openai.ChatCompletionMessage,
 	history []openai.ChatCompletionMessage,
 	request openai.ChatCompletionMessage,
+	extraFunctions []actions.Function,
+	model LanguageModel,
 ) ([]openai.ChatCompletionMessage, error) {
 
 	messages := []openai.ChatCompletionMessage{system}
@@ -51,12 +61,31 @@ func (ai *OpenAI) GetResponse(
 
 	var newMessages []openai.ChatCompletionMessage
 
+	// build definitions and functions for this specific API call
+	allDefinitions := []openai.FunctionDefinition{}
+	allFunctions := make(map[string]actions.Function)
+	for k, v := range ai.functions {
+		allFunctions[k] = v
+		allDefinitions = append(allDefinitions, v.Definition)
+	}
+
+	for _, fnc := range extraFunctions {
+		_, exists := allFunctions[fnc.Definition.Name]
+		if exists {
+			logrus.WithField("fnc_name", fnc.Definition.Name).Warnln("duplicate function for message")
+			continue // can't add "extra" of an already existing function
+		}
+
+		allFunctions[fnc.Definition.Name] = fnc
+		allDefinitions = append(allDefinitions, fnc.Definition)
+	}
+
 	// loop call functions until the ai generates a response
 	// itr is used to track successive invalid function calls
 	// if itr exceeds maxFailedCalls we break out with error
 	itr := 0
 	for itr = 0; itr < maxFailedCalls; itr++ {
-		message, err := ai.Query(messages)
+		message, err := ai.Query(messages, allDefinitions, model)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get response; %w", err)
 		}
@@ -69,8 +98,9 @@ func (ai *OpenAI) GetResponse(
 
 		// this must be a function call - so we'll handle that & iterate!
 
-		fnc, exists := ai.functions[message.FunctionCall.Name]
+		fnc, exists := allFunctions[message.FunctionCall.Name]
 		if !exists {
+
 			continue // hopefully the AI will correct itself and use a real function next time
 		}
 
@@ -102,6 +132,8 @@ func (ai *OpenAI) GetResponse(
 
 func (ai *OpenAI) Query(
 	messages []openai.ChatCompletionMessage,
+	definitions []openai.FunctionDefinition,
+	model LanguageModel,
 ) (openai.ChatCompletionMessage, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ai.Timeout)
 	defer cancel()
@@ -111,9 +143,9 @@ func (ai *OpenAI) Query(
 	resp, err := ai.Client.CreateChatCompletion(
 		ctx,
 		openai.ChatCompletionRequest{
-			Model:     openai.GPT40613,
+			Model:     string(model),
 			Messages:  messages,
-			Functions: ai.definitions,
+			Functions: definitions,
 		},
 	)
 	if err != nil {

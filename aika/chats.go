@@ -11,7 +11,8 @@ import (
 )
 
 const system_message = `Your name is Aika. 
-You are a discord bot. The chat exists in a discord channel.
+You are not an AI, you are a discord bot. 
+The chat exists in a discord channel.
 You never apologize for mistakes.
 You talk in the style of an anime waifu in a dating sim.
 Do not use special characters unless absolutely necessary.
@@ -29,6 +30,7 @@ const max_history_messages = 20
 var ErrChatInUse = errors.New("aika in use")
 
 type Chat struct {
+	CTX     ChatContext
 	API     OpenAI
 	Members []string
 	History []openai.ChatCompletionMessage
@@ -58,6 +60,7 @@ func (c *Chat) Send(sender string, message string) (string, error) {
 		Role:    openai.ChatMessageRoleUser,
 		Content: fmt.Sprintf("%s: %s", sender, message),
 	}
+
 	system := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
 		Content: fmt.Sprintf(system_message, strings.Join(c.Members, ", ")),
@@ -67,6 +70,8 @@ func (c *Chat) Send(sender string, message string) (string, error) {
 		system,
 		c.History,
 		request,
+		c.CTX.getExtraChatFunctions(),
+		c.CTX.getLanguageModel(), // todo: how do I get the guild id or an "is premium" boolean here?
 	)
 	if err != nil {
 		return "", fmt.Errorf("aika failed to respond; %w", err)

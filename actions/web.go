@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"aika/aika"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -15,7 +14,7 @@ import (
 const maxSearchResults = 5
 
 var (
-	Function_SearchWeb = aika.Function{
+	Function_SearchWeb = Function{
 		Definition: definition_SearchWeb,
 		Handler:    handler_SearchWeb,
 	}

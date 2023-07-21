@@ -4,12 +4,14 @@ import (
 	"aika/actions"
 	"aika/aika"
 	"aika/discord"
+	"aika/premium"
 	"aika/s3"
 	"math/rand"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/peterbourgon/diskv/v3"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
@@ -102,17 +104,31 @@ func main() {
 		logrus.WithError(err).Fatalln("failed to add DallE function")
 	}
 
+	// init db
+	flatTransform := func(s string) []string { return []string{} }
+	db := &premium.Servers{
+		DataStore: diskv.New(diskv.Options{
+			BasePath:     "premium-servers",
+			Transform:    flatTransform,
+			CacheSizeMax: 1024 * 1024,
+		}),
+	}
+
 	// start chat connections
 	var wg sync.WaitGroup
 
 	// init discord
-	startDiscordChat(&wg, ai)
+	startDiscordChat(&wg, ai, db)
 
 	// block on chats
 	wg.Wait()
 }
 
-func startDiscordChat(wg *sync.WaitGroup, ai aika.OpenAI) {
+func startDiscordChat(
+	wg *sync.WaitGroup,
+	ai aika.OpenAI,
+	db *premium.Servers,
+) {
 
 	// yoink env vars
 	discordKey, exists := os.LookupEnv("AIKA_DISCORD_KEY")
@@ -121,8 +137,9 @@ func startDiscordChat(wg *sync.WaitGroup, ai aika.OpenAI) {
 	}
 
 	bot := discord.AikaBot{
-		ApiKey: discordKey,
-		API:    ai,
+		PremiumDB: db,
+		ApiKey:    discordKey,
+		API:       ai,
 	}
 
 	err := bot.Start(wg)

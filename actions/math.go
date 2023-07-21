@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"aika/aika"
 	"fmt"
 	"math"
 	"math/rand"
@@ -15,7 +14,7 @@ import (
 // they can be inline defined
 
 var (
-	Function_GenRandomNumber = aika.Function{
+	Function_GenRandomNumber = Function{
 		Definition: definition_getRandomNumber,
 		Handler:    handler_GetRandomNumber,
 	}
