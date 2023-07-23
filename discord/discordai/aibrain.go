@@ -63,6 +63,11 @@ func (brain *AIBrain) Process(
 		// push response into history
 		newHistory = append(newHistory, res)
 
+		// trim history
+		if len(newHistory) > 50 {
+			newHistory = newHistory[len(newHistory)-50:]
+		}
+
 		// if FunctionCall is nil - then OpenAI sent us a human response :)
 		if res.FunctionCall == nil {
 			break
