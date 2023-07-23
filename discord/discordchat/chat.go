@@ -18,9 +18,15 @@ type Chat struct {
 	Mutex  sync.Mutex
 }
 
+// TODO: need to feed this function channel
+// and guild IDs so the model can be determined better
 func (c *Chat) getLanguageModel() ai.LanguageModel {
 	// RandalBot guild gets GPT4
 	if c.ChatID == "1092965539346907156" {
+		return ai.LanguageModel_GPT4
+	}
+	// kegan DM channel
+	if c.ChatID == "1132494588330901524" {
 		return ai.LanguageModel_GPT4
 	}
 

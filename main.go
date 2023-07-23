@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,16 +33,25 @@ func newInterruptContext(parent context.Context) (context.Context, context.Cance
 }
 
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
+	dev := flag.Bool("dev", false, "developer mode")
+	flag.Parse()
+
+	if *dev {
+		logrus.SetLevel(logrus.DebugLevel)
+		//logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
+	}
 
 	ctx, cancel := newInterruptContext(context.Background())
 	defer cancel()
 	logrus.Infoln("starting aika")
 
-	discordKey, exists := os.LookupEnv("AIKA_DEV_DISCORD_KEY")
+	envVar := "AIKA_DISCORD_KEY"
+	if *dev {
+		envVar = "AIKA_DEV_DISCORD_KEY"
+	}
+	discordKey, exists := os.LookupEnv(envVar)
 	if !exists {
-		logrus.Fatalln("missing AIKA_DEV_DISCORD_KEY from env")
+		logrus.Fatalf("missing %s from env\n", envVar)
 	}
 
 	openaiKey, exists := os.LookupEnv("OPENAI_KEY")

@@ -7,12 +7,25 @@ ChatGPT powered waifu.
 
 ## User Features
 
-TODO
+- ChatGPT
+- DallE
+- Web Search
+- Waifu Image Gen
+- Random Number Gen
+- MyAnimeList Search
 
 ## Developer Notes
 
-TODO
+- Admin Commands
+- S3 DallE Proxy
+- Dockerized for easy distribution
+- Guild and DM specific GPT version control
+- Guild and DM specific function control
 
 ## Run
 
-TODO
+```shell
+$ ./run.sh latest
+```
+
+*see [run.sh](./run.sh) for environment variables required.*

@@ -158,6 +158,7 @@ func (chat *Guild) getAvailableFunctions(
 		web.Function_GetWaifuSfw,
 		web.Function_SearchWeb,
 		math.Function_GenRandomNumber,
+		web.Function_GetAnime,
 	}
 	s3, err := storage.NewS3FromEnv()
 	if err != nil {

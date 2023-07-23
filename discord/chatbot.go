@@ -89,9 +89,14 @@ func (bot *ChatBot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	// ignore all messages not mentioning Aika (if they're in guilds)
 	hasMention := false
+
 	for _, mention := range m.Mentions {
 		//TODO: this doesn't work if a user "copies" thei @aika from another message
 		// why trhe fuck is discord like this?
+		// what the fuck when I copy @Aika i get a MENTIONROLES but not a Mention ?!
+		// NOTE: if you copy an @ in discord
+		//		you can't click the @ and see their profile
+		//		this is a discord fuckery
 		if mention.ID == s.State.User.ID {
 			hasMention = true
 			break
