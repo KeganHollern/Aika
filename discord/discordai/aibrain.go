@@ -124,6 +124,6 @@ func (brain *AIBrain) BuildSystemMessage(
 ) openai.ChatCompletionMessage {
 	return openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fmt.Sprintf(sys, strings.Join([]string{}, ", ")),
+		Content: fmt.Sprintf(sys, strings.Join(chatMembers, ", ")),
 	}
 }

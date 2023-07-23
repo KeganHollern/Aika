@@ -21,12 +21,14 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	}
 	defer chat.Mutex.Unlock()
 
-	// TODO: get member list
-	system := chat.Brain.BuildSystemMessage([]string{"Kegan", "Aika"})
+	msg := chat.formatUsers(m.Content, m.Mentions)
+
+	system := chat.Brain.BuildSystemMessage([]string{m.Author.Username, "Aika"})
 	history := chat.History
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: m.Content, // TODO: prefix <USER>: <MSG> ?
+		Content: msg, // TODO: prefix <USER>: <MSG> ?
+		Name:    chat.cleanUserName(m.Author.Username),
 	}
 
 	var err error
@@ -56,7 +58,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	// TODO: improve this log
 	logrus.
-		WithField("message", m.Content).
+		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")
 

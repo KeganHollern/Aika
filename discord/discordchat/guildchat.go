@@ -1,6 +1,9 @@
 package discordchat
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -22,15 +25,21 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	defer chat.Mutex.Unlock()
 
-	// TODO: get member list
-	system := chat.Brain.BuildSystemMessage([]string{"Kegan", "Aika"})
+	msg := chat.formatUsers(m.Content, m.Mentions)
+
+	members, err := chat.getChatMembers(s, m.ChannelID)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to get chat members")
+		s.ChannelMessageSend(m.ChannelID, err.Error())
+		return
+	}
+	system := chat.Brain.BuildSystemMessage(members)
 	history := chat.getHistory(m.ChannelID)
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: m.Content, // TODO: prefix <USER>: <MSG> ?
+		Content: msg, // TODO: prefix <USER>: <MSG> ?
+		Name:    chat.cleanUserName(m.Author.Username),
 	}
-
-	var err error
 
 	history, err = chat.Brain.Process(
 		chat.Ctx,
@@ -57,7 +66,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// TODO: improve this log
 	logrus.
-		WithField("message", m.Content).
+		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")
 
@@ -70,4 +79,59 @@ func (chat *Guild) getHistory(channel string) []openai.ChatCompletionMessage {
 }
 func (chat *Guild) setHistory(channel string, history []openai.ChatCompletionMessage) {
 	chat.History[channel] = history
+}
+
+func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]string, error) {
+
+	participants := []string{}
+
+	gd, err := s.State.Guild(chat.ChatID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get guild details; %w", err)
+	}
+
+	for _, member := range gd.Members {
+		// aika can't see other bots (only herself)
+		if member.User.Bot &&
+			member.User.ID != s.State.User.ID {
+			continue
+		}
+
+		presence, err := s.State.Presence(chat.ChatID, member.User.ID)
+		if errors.Is(err, discordgo.ErrStateNotFound) {
+			continue // user likely offline or some shit
+		}
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("username", member.User.Username).
+				WithField("userid", member.User.ID).
+				Warnln("failed to get presence")
+			continue
+		}
+
+		// ??? what the fuck?
+		// we don't get presence info when they're offline so what the fuck?
+		if presence.Status == discordgo.StatusOffline ||
+			presence.Status == discordgo.StatusInvisible {
+			continue
+		}
+
+		// filter people who can't view channel
+		perms, err := s.State.UserChannelPermissions(member.User.ID, channel)
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("username", member.User.Username).
+				WithField("userid", member.User.ID).
+				Warnln("failed to get user permissions")
+		}
+		if perms&discordgo.PermissionViewChannel != discordgo.PermissionViewChannel {
+			continue
+		}
+
+		participants = append(participants, member.User.Username)
+	}
+
+	return participants, nil
 }
