@@ -6,6 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"aika/discord"
+
+	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,11 +31,33 @@ func newInterruptContext(parent context.Context) (context.Context, context.Cance
 }
 
 func main() {
-	_, cancel := newInterruptContext(context.Background())
+	logrus.SetLevel(logrus.DebugLevel)
+
+	ctx, cancel := newInterruptContext(context.Background())
 	defer cancel()
-
-	// do things that exit w/ ctx cancellation
-
 	logrus.Infoln("starting aika")
 
+	discordKey, exists := os.LookupEnv("AIKA_DEV_DISCORD_KEY")
+	if !exists {
+		logrus.Fatalln("missing AIKA_DEV_DISCORD_KEY from env")
+	}
+
+	openaiKey, exists := os.LookupEnv("OPENAI_KEY")
+	if !exists {
+		logrus.Fatalln("missing OPENAI_KEY from env")
+	}
+
+	logrus.WithField("discord_key", discordKey[0:3]).Debugln("starting chatbot...")
+	_, err := discord.StartChatbot(
+		ctx,
+		discordKey,
+		openai.NewClient(openaiKey),
+	)
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to init discord bot")
+	}
+
+	<-ctx.Done()
+	logrus.Infoln("shutdown")
+	// do things that exit w/ ctx cancellation
 }
