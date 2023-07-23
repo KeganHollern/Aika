@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 )
 
 func newInterruptContext(parent context.Context) (context.Context, context.CancelFunc) {
@@ -26,9 +28,11 @@ func newInterruptContext(parent context.Context) (context.Context, context.Cance
 }
 
 func main() {
-	ctx, cancel := newInterruptContext(context.Background())
+	_, cancel := newInterruptContext(context.Background())
 	defer cancel()
 
 	// do things that exit w/ ctx cancellation
+
+	logrus.Infoln("starting aika")
 
 }
