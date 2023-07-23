@@ -21,7 +21,7 @@ type ChatRequest struct {
 	History []openai.ChatCompletionMessage // chat
 	Message openai.ChatCompletionMessage   // requst
 
-	Functions []openai.FunctionDefinition // chat
+	Functions []openai.FunctionDefinition // chat - all definitions exist in AIBrain
 
 	Model LanguageModel // chat
 }

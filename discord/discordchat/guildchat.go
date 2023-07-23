@@ -3,13 +3,14 @@ package discordchat
 import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
+	"github.com/sirupsen/logrus"
 )
 
 type Guild struct {
 	Chat
 
 	// chat history
-	History   []openai.ChatCompletionMessage
+	History   map[string][]openai.ChatCompletionMessage
 	Functions []openai.FunctionDefinition
 }
 
@@ -21,14 +22,52 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	defer chat.Mutex.Unlock()
 
-	//	history := chat.getHistory(m.ChannelID)
-	// 	model := chat.getLanguageModel()
+	// TODO: get member list
+	system := chat.Brain.BuildSystemMessage([]string{"Kegan", "Aika"})
+	history := chat.getHistory(m.ChannelID)
+	message := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: m.Content, // TODO: prefix <USER>: <MSG> ?
+	}
 
-	response := chat.Brain.DummyRequest(chat.Ctx)
+	var err error
 
-	s.ChannelMessageSend(m.ChannelID, response)
+	history, err = chat.Brain.Process(
+		chat.Ctx,
+		system,
+		history,
+		message,
+		chat.Functions,
+		chat.getLanguageModel(),
+	)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed while processing in brain")
+		s.ChannelMessageSend(m.ChannelID, err.Error())
+		return
+	}
+	if len(history) == 0 {
+		logrus.Errorln("blank history returned from brain.Process")
+		s.ChannelMessageSend(m.ChannelID, "my brain is empty")
+		return
+	}
+
+	chat.setHistory(m.ChannelID, history)
+
+	res := history[len(history)-1]
+
+	// TODO: improve this log
+	logrus.
+		WithField("message", m.Content).
+		WithField("response", res.Content).
+		Infoln("chat log")
+
+	// TODO: parse out weird openAI markdown
+	s.ChannelMessageSend(m.ChannelID, res.Content)
 }
 
 func (chat *Guild) getHistory(channel string) []openai.ChatCompletionMessage {
-	return chat.History
+	return chat.History[channel]
+}
+func (chat *Guild) setHistory(channel string, history []openai.ChatCompletionMessage) {
+	chat.History[channel] = history
 }

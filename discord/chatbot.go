@@ -37,7 +37,8 @@ func StartChatbot(
 		Ctx:     ctx,
 		Session: dg,
 		Brain: &discordai.AIBrain{
-			OpenAI: client,
+			OpenAI:    client,
+			Functions: make(map[string]discordai.FunctionHandler),
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),
 		DirectChats: make(map[string]*discordchat.Direct),
@@ -137,7 +138,7 @@ func (bot *ChatBot) newGuildChat(guildId string) *discordchat.Guild {
 			Mutex:  sync.Mutex{},
 			Brain:  bot.Brain,
 		},
-		History:   []openai.ChatCompletionMessage{},
+		History:   make(map[string][]openai.ChatCompletionMessage),
 		Functions: []openai.FunctionDefinition{},
 	}
 }

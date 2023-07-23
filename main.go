@@ -22,6 +22,7 @@ func newInterruptContext(parent context.Context) (context.Context, context.Cance
 	go func() {
 		select {
 		case <-c:
+			logrus.Infoln("ctrl+c detected")
 			cancel()
 		case <-ctx.Done():
 		}
