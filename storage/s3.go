@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -18,6 +19,34 @@ type S3 struct {
 	AccessKey string
 	SecretKey string
 	Bucket    string
+}
+
+func NewS3FromEnv() (*S3, error) {
+	endpoint, exists := os.LookupEnv("S3_HOSTNAME")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_HOSTNAME")
+	}
+	region := "auto" // TODO: make this env var
+	access, exists := os.LookupEnv("S3_ACCESS")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_ACCESS")
+	}
+	secret, exists := os.LookupEnv("S3_SECRET")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_SECRET")
+	}
+	bucket, exists := os.LookupEnv("S3_BUCKET")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_BUCKET")
+	}
+
+	return &S3{
+		Endpoint:  endpoint,
+		Region:    region,
+		AccessKey: access,
+		SecretKey: secret,
+		Bucket:    bucket,
+	}, nil
 }
 
 // DownloadAndUpload will download a generic file from a URL

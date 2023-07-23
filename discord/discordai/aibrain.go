@@ -16,17 +16,7 @@ import (
 var sys string
 
 type AIBrain struct {
-	OpenAI    *openai.Client
-	Functions map[string]FunctionHandler
-}
-
-func (brain *AIBrain) AddFunction(name string, callback FunctionHandler) error {
-	if _, exists := brain.Functions[name]; exists {
-		return fmt.Errorf("function name %s already exists", name)
-	}
-
-	brain.Functions[name] = callback
-	return nil
+	OpenAI *openai.Client
 }
 
 // process a message & return the new chat history
@@ -36,13 +26,20 @@ func (brain *AIBrain) Process(
 	system openai.ChatCompletionMessage,
 	history []openai.ChatCompletionMessage,
 	message openai.ChatCompletionMessage,
-	functions []openai.FunctionDefinition,
+	functions []Function,
 	model ai.LanguageModel,
 ) ([]openai.ChatCompletionMessage, error) {
 
 	// copy history to a new slice
 	newHistory := []openai.ChatCompletionMessage{}
 	newHistory = append(newHistory, history...)
+
+	functionHandlers := make(map[string]FunctionHandler)
+	functionDefinitions := []openai.FunctionDefinition{}
+	for _, fnc := range functions {
+		functionDefinitions = append(functionDefinitions, fnc.Definition)
+		functionHandlers[fnc.Definition.Name] = fnc.Handler
+	}
 
 	failedFuncCall := false
 	for i := 0; i < 2; i++ {
@@ -53,7 +50,7 @@ func (brain *AIBrain) Process(
 			System:    system,
 			History:   newHistory, // we use copied history here so function history is retained!
 			Message:   message,
-			Functions: functions,
+			Functions: functionDefinitions,
 			Model:     model,
 		}
 		res, err := req.Send(ctx)
@@ -75,30 +72,33 @@ func (brain *AIBrain) Process(
 
 		// find function handler
 		name := res.FunctionCall.Name
-		handler, exists := brain.Functions[name]
+		handler, exists := functionHandlers[name]
+		var result string
 		if !exists {
 			// hopefully the AI will correct itself and use a real function next time
 			// if not - for loop will exit eventually
-			logrus.WithField("func", name).Warnln("openai tried to call non-existant function")
+			logrus.WithField("call", res.FunctionCall).Warnln("openai tried to call non-existant function")
 			failedFuncCall = true
-			continue
-		}
+			result = fmt.Sprintf("the function '%s' does not exist.", name)
+		} else {
 
-		failedFuncCall = false
+			failedFuncCall = false
 
-		// unmarshal args
-		var args map[string]interface{}
-		err = json.Unmarshal([]byte(res.FunctionCall.Arguments), &args)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal openai args; %w", err)
-		}
+			// unmarshal args
+			var args map[string]interface{}
+			err = json.Unmarshal([]byte(res.FunctionCall.Arguments), &args)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal openai args; %w", err)
+			}
 
-		// call handler (runs function and gets result for openai!)
-		result, err := handler(args)
-		if err != nil {
-			// functions only return ERR when a fatal error occurs
-			// anything that OpenAI should process is returned as result
-			return nil, fmt.Errorf("failed during function call; %w", err)
+			// call handler (runs function and gets result for openai!)
+			logrus.WithField("call", res.FunctionCall).Debugln("calling function")
+			result, err = handler(args)
+			if err != nil {
+				// functions only return ERR when a fatal error occurs
+				// anything that OpenAI should process is returned as result
+				return nil, fmt.Errorf("failed during function call; %w", err)
+			}
 		}
 
 		// update message for next iteration

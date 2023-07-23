@@ -33,6 +33,7 @@ func newInterruptContext(parent context.Context) (context.Context, context.Cance
 
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 
 	ctx, cancel := newInterruptContext(context.Background())
 	defer cancel()

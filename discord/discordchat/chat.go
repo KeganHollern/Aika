@@ -19,6 +19,7 @@ type Chat struct {
 }
 
 func (c *Chat) getLanguageModel() ai.LanguageModel {
+	//TODO: premium chats?
 	return ai.LanguageModel_GPT35
 }
 
@@ -35,4 +36,20 @@ func (c *Chat) cleanUserName(input string) string {
 	reg := regexp.MustCompile("[^a-zA-Z0-9]+")
 	processedString := reg.ReplaceAllString(input, "")
 	return processedString
+}
+
+func (c *Chat) replaceMarkdownLinks(md string) string {
+	re := regexp.MustCompile(`!?\]\((https?.*?)\)`)
+
+	// Find all markdown links in the text
+	matches := re.FindAllStringSubmatch(md, -1)
+
+	// Replace markdown links with their URLs
+	for _, match := range matches {
+		if len(match) > 1 {
+			md = regexp.MustCompile(`!?\[[^\]]+\]\(`+regexp.QuoteMeta(match[1])+`[\)]`).ReplaceAllString(md, match[1])
+		}
+	}
+
+	return md
 }
