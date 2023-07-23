@@ -56,23 +56,6 @@ func StartChatbot(
 		return nil, fmt.Errorf("error opening connection; %w", err)
 	}
 
-	//TODO:
-	// log all guild names (DEBUG)
-	for _, rootGd := range dg.State.Guilds {
-		gd, err := dg.Guild(rootGd.ID)
-		if err != nil {
-			logrus.
-				WithError(err).
-				WithField("id", rootGd.ID).
-				Warnln("could not find guild data")
-		} else {
-			logrus.
-				WithField("name", gd.Name).
-				WithField("id", gd.ID).
-				Info("in guild")
-		}
-	}
-
 	// wait for ctx done to close discord connection safely
 	go func() {
 		<-ctx.Done()

@@ -1,6 +1,8 @@
 package discordchat
 
 import (
+	"aika/actions/discord"
+	"aika/actions/math"
 	action_openai "aika/actions/openai"
 	"aika/actions/web"
 	"aika/discord/discordai"
@@ -45,7 +47,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		system,
 		history,
 		message,
-		chat.getAvailableFunctions(),
+		chat.getAvailableFunctions(s, m),
 		chat.getLanguageModel(),
 	)
 	if err != nil {
@@ -77,12 +79,16 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	}
 }
 
-func (chat *Direct) getAvailableFunctions() []discordai.Function {
+func (chat *Direct) getAvailableFunctions(
+	s *discordgo.Session,
+	m *discordgo.MessageCreate,
+) []discordai.Function {
 	functions := []discordai.Function{
 		web.Function_GetWaifuCateogires,
 		web.Function_GetWaifuNsfw,
 		web.Function_GetWaifuSfw,
 		web.Function_SearchWeb,
+		math.Function_GenRandomNumber,
 	}
 	s3, err := storage.NewS3FromEnv()
 	if err != nil {
@@ -95,6 +101,14 @@ func (chat *Direct) getAvailableFunctions() []discordai.Function {
 	}
 
 	functions = append(functions, oai.GetFunction_DallE())
+
+	// kegan :)
+	if m.Author.ID == "241370201222938626" {
+		g := &discord.Guilds{
+			Session: s,
+		}
+		functions = append(functions, g.GetFunction_ListGuilds())
+	}
 
 	//TODO: add more functions to this
 	return functions

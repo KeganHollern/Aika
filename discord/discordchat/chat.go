@@ -19,6 +19,11 @@ type Chat struct {
 }
 
 func (c *Chat) getLanguageModel() ai.LanguageModel {
+	// RandalBot guild gets GPT4
+	if c.ChatID == "1092965539346907156" {
+		return ai.LanguageModel_GPT4
+	}
+
 	//TODO: premium chats?
 	return ai.LanguageModel_GPT35
 }
