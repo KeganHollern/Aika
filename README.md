@@ -29,3 +29,9 @@ $ ./run.sh latest
 ```
 
 *see [run.sh](./run.sh) for environment variables required.*
+
+## TODO
+
+Improve guild/chat "getLanguageModel" integration
+Improve "getAvailableFunctions" to reduce duplication
+Improve "admin" command integration - abstracting "isSenderAdmin()" or something
