@@ -73,6 +73,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// TODO: improve this log
 	logrus.
+		WithField("sender", m.Author.Username).
 		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")

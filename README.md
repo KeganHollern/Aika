@@ -34,4 +34,5 @@ $ ./run.sh latest
 
 Improve guild/chat "getLanguageModel" integration
 Improve "getAvailableFunctions" to reduce duplication
-Improve "admin" command integration - abstracting "isSenderAdmin()" or something
+Add more admin commands
+Improve logging
