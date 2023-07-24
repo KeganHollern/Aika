@@ -11,9 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// because no struct is necessary for math functions
-// they can be inline defined
-
 var (
 	Function_GenRandomNumber = discordai.Function{
 		Definition: definition_getRandomNumber,
@@ -21,8 +18,6 @@ var (
 	}
 )
 
-// definition for getRandomNumber
-// TODO: learn to generate this from reflection
 var definition_getRandomNumber = openai.FunctionDefinition{
 	Name:        "getRandomNumber",
 	Description: "generate a random number with decimals.",
@@ -50,13 +45,11 @@ var definition_getRandomNumber = openai.FunctionDefinition{
 	},
 }
 
-// handler for getRandomNumber
 func handler_GetRandomNumber(msgMap map[string]interface{}) (string, error) {
 	value := action_GetRandomNumber(msgMap["min"].(float64), msgMap["max"].(float64), msgMap["round"].(bool))
 	return fmt.Sprintf("%f", value), nil
 }
 
-// raw function implementation
 func action_GetRandomNumber(min float64, max float64, round bool) float64 {
 	result := min + ((max - min) * rand.Float64())
 	if round {

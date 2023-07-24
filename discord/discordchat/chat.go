@@ -3,18 +3,22 @@ package discordchat
 import (
 	"aika/ai"
 	"aika/discord/discordai"
+	"aika/storage"
 	"context"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/sirupsen/logrus"
 )
 
 type Chat struct {
 	Ctx    context.Context
 	ChatID string
 	Brain  *discordai.AIBrain
+	S3     *storage.S3
+	Cfg    *storage.Disk
 	Mutex  sync.Mutex
 }
 
@@ -32,6 +36,32 @@ func (c *Chat) getLanguageModel() ai.LanguageModel {
 
 	//TODO: premium chats?
 	return ai.LanguageModel_GPT35
+}
+
+// isAdmin reads "admins" from the config file
+// if the provided user ID is in the list it returns true
+func (c *Chat) isAdmin(userID string) bool {
+	data, ok := c.Cfg.Get("admins")
+	if !ok {
+		return false // no admins configred at all
+	}
+	array, ok := data.([]interface{})
+	if !ok {
+		logrus.WithField("data", data).Warnln("invalid 'admins' format in config.yaml")
+		return false
+	}
+
+	for _, v := range array {
+		str, ok := v.(string)
+		if !ok {
+			logrus.WithField("data", v).Warnln("invalid 'admins' entry in config.yaml")
+			continue
+		}
+		if str == userID {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Chat) formatUsers(message string, users []*discordgo.User) string {

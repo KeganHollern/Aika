@@ -6,7 +6,6 @@ import (
 	action_openai "aika/actions/openai"
 	"aika/actions/web"
 	"aika/discord/discordai"
-	"aika/storage"
 	"errors"
 	"fmt"
 	"strings"
@@ -160,20 +159,16 @@ func (chat *Guild) getAvailableFunctions(
 		math.Function_GenRandomNumber,
 		web.Function_GetAnime,
 	}
-	s3, err := storage.NewS3FromEnv()
-	if err != nil {
-		s3 = nil // ensure this shit
-		logrus.WithError(err).Warnln("no S3 configured for DallE action")
-	}
+
 	oai := &action_openai.DallE{
 		Client: chat.Brain.OpenAI,
-		S3:     s3,
+		S3:     chat.S3,
 	}
 
 	functions = append(functions, oai.GetFunction_DallE())
 
-	// kegan :)
-	if m.Author.ID == "241370201222938626" {
+	// admin commands
+	if chat.isAdmin(m.Author.ID) {
 		g := &discord.Guilds{
 			Session: s,
 		}

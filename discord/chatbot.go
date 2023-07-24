@@ -11,6 +11,7 @@ import (
 
 	"aika/discord/discordai"
 	"aika/discord/discordchat"
+	"aika/storage"
 )
 
 type ChatBot struct {
@@ -19,12 +20,17 @@ type ChatBot struct {
 	Brain       *discordai.AIBrain
 	GuildChats  map[string]*discordchat.Guild
 	DirectChats map[string]*discordchat.Direct
+
+	S3  *storage.S3
+	Cfg *storage.Disk
 }
 
 func StartChatbot(
 	ctx context.Context,
 	apiKey string,
 	client *openai.Client,
+	s3 *storage.S3,
+	cfg *storage.Disk,
 ) (*ChatBot, error) {
 	// create session object
 	dg, err := discordgo.New("Bot " + apiKey)
@@ -41,6 +47,8 @@ func StartChatbot(
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),
 		DirectChats: make(map[string]*discordchat.Direct),
+		S3:          s3,
+		Cfg:         cfg,
 	}
 
 	// add OnMessage handler
@@ -124,6 +132,8 @@ func (bot *ChatBot) newGuildChat(guildId string) *discordchat.Guild {
 			ChatID: guildId,
 			Mutex:  sync.Mutex{},
 			Brain:  bot.Brain,
+			S3:     bot.S3,
+			Cfg:    bot.Cfg,
 		},
 		History: make(map[string][]openai.ChatCompletionMessage),
 	}
@@ -136,6 +146,8 @@ func (bot *ChatBot) newDirectChat(channelId string) *discordchat.Direct {
 			ChatID: channelId,
 			Mutex:  sync.Mutex{},
 			Brain:  bot.Brain,
+			S3:     bot.S3,
+			Cfg:    bot.Cfg,
 		},
 		History: []openai.ChatCompletionMessage{},
 	}

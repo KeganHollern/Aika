@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"aika/discord"
+	"aika/storage"
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
@@ -59,11 +60,23 @@ func main() {
 		logrus.Fatalln("missing OPENAI_KEY from env")
 	}
 
+	s3, err := storage.NewS3FromEnv()
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to init S3 store")
+	}
+
+	cfg, err := storage.NewDisk("./data/config.yaml")
+	if err != nil {
+		logrus.WithError(err).Fatalln("error reading config.yaml")
+	}
+
 	logrus.WithField("discord_key", discordKey[0:3]).Debugln("starting chatbot...")
-	_, err := discord.StartChatbot(
+	_, err = discord.StartChatbot(
 		ctx,
 		discordKey,
 		openai.NewClient(openaiKey),
+		s3,
+		cfg,
 	)
 	if err != nil {
 		logrus.WithError(err).Fatalln("failed to init discord bot")
