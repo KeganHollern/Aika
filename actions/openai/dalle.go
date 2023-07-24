@@ -94,6 +94,6 @@ func (ai *DallE) action_DallE(prompt string) (string, error) {
 		return oaiURL, nil
 	}
 
-	// TODO: a public URL for aika
-	return "https://pub-f2995484be8845ed9b9e13705cfa451d.r2.dev/" + path, nil
+	// return the public URL for the uploaded image
+	return fmt.Sprintf("%s/%s", ai.S3.PublicUrl, path), nil
 }

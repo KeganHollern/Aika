@@ -19,6 +19,7 @@ type S3 struct {
 	AccessKey string
 	SecretKey string
 	Bucket    string
+	PublicUrl string
 }
 
 func NewS3FromEnv() (*S3, error) {
@@ -26,7 +27,14 @@ func NewS3FromEnv() (*S3, error) {
 	if !exists {
 		return nil, fmt.Errorf("missing env var S3_HOSTNAME")
 	}
-	region := "auto" // TODO: make this env var
+	publicurl, exists := os.LookupEnv("S3_PUBLICURL")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_PUBLICURL")
+	}
+	region, exists := os.LookupEnv("S3_REGION")
+	if !exists {
+		return nil, fmt.Errorf("missing env var S3_REGION")
+	}
 	access, exists := os.LookupEnv("S3_ACCESS")
 	if !exists {
 		return nil, fmt.Errorf("missing env var S3_ACCESS")
@@ -46,6 +54,7 @@ func NewS3FromEnv() (*S3, error) {
 		AccessKey: access,
 		SecretKey: secret,
 		Bucket:    bucket,
+		PublicUrl: publicurl,
 	}, nil
 }
 
