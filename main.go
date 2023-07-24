@@ -37,10 +37,8 @@ func main() {
 	dev := flag.Bool("dev", false, "developer mode")
 	flag.Parse()
 
-	if *dev {
-		logrus.SetLevel(logrus.DebugLevel)
-		//logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
-	}
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
 
 	ctx, cancel := newInterruptContext(context.Background())
 	defer cancel()

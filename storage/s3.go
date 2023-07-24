@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/sirupsen/logrus"
 )
 
 type S3 struct {
@@ -34,7 +35,7 @@ func NewS3FromEnv() (*S3, error) {
 	}
 	region, exists := os.LookupEnv("S3_REGION")
 	if !exists {
-		return nil, fmt.Errorf("missing env var S3_REGION")
+		region = "auto"
 	}
 	access, exists := os.LookupEnv("S3_ACCESS")
 	if !exists {
@@ -48,6 +49,15 @@ func NewS3FromEnv() (*S3, error) {
 	if !exists {
 		return nil, fmt.Errorf("missing env var S3_BUCKET")
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"endpoint": endpoint,
+		"region":   region,
+		"access":   access[:4],
+		"secret":   secret[:4],
+		"public":   publicurl,
+		"bucket":   bucket,
+	}).Infoln("s3 configuration")
 
 	return &S3{
 		Endpoint:  endpoint,
