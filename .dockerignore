@@ -1,2 +1,4 @@
 data/
 *.exe
+.github/
+.vscode/
