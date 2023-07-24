@@ -125,14 +125,14 @@ func (brain *AIBrain) Process(
 
 // build system message from format embedded system.txt
 func (brain *AIBrain) BuildSystemMessage(
-	chatMembers []string,
+	displayNames []string,
+	mentions []string,
 ) openai.ChatCompletionMessage {
-
-	// TODO: modify this so aika knows how to `@` individuals...
-	memberInfo := strings.Join(chatMembers, ", ")
+	memberNames := strings.Join(displayNames, ", ")
+	memberMentions := strings.Join(mentions, ", ")
 
 	return openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fmt.Sprintf(sys, memberInfo),
+		Content: fmt.Sprintf(sys, memberNames, memberMentions),
 	}
 }

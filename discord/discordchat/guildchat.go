@@ -38,12 +38,21 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, err.Error())
 		return
 	}
-	system := chat.Brain.BuildSystemMessage(members)
+	memberNames := []string{}
+	memberMentions := []string{}
+	for _, member := range members {
+		memberNames = append(memberNames, member.GetDisplayName())
+		memberMentions = append(memberMentions, member.GetMentionString())
+	}
+
+	sender := &ChatParticipant{User: m.Author}
+
+	system := chat.Brain.BuildSystemMessage(memberNames, memberMentions)
 	history := chat.getHistory(m.ChannelID)
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
 		Content: msg, // TODO: prefix <USER>: <MSG> ?
-		Name:    chat.cleanUserName(m.Author.Username),
+		Name:    sender.GetDisplayName(),
 	}
 
 	s.ChannelTyping(m.ChannelID)
@@ -61,6 +70,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, err.Error())
 		return
 	}
+
 	if len(history) == 0 {
 		logrus.Errorln("blank history returned from brain.Process")
 		s.ChannelMessageSend(m.ChannelID, "my brain is empty")
@@ -73,7 +83,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// TODO: improve this log
 	logrus.
-		WithField("sender", m.Author.Username).
+		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")
@@ -93,9 +103,9 @@ func (chat *Guild) setHistory(channel string, history []openai.ChatCompletionMes
 	chat.History[channel] = history
 }
 
-func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]string, error) {
+func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]*ChatParticipant, error) {
 
-	participants := []string{}
+	participants := []*ChatParticipant{}
 
 	gd, err := s.State.Guild(chat.ChatID)
 	if err != nil {
@@ -141,7 +151,7 @@ func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]strin
 			continue
 		}
 
-		participants = append(participants, member.User.Username)
+		participants = append(participants, &ChatParticipant{User: member.User})
 	}
 
 	return participants, nil

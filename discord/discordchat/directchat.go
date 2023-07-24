@@ -29,12 +29,14 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	msg := chat.formatUsers(m.Content, m.Mentions)
 
-	system := chat.Brain.BuildSystemMessage([]string{m.Author.Username})
+	sender := &ChatParticipant{User: m.Author}
+
+	system := chat.Brain.BuildSystemMessage([]string{sender.GetDisplayName()}, []string{sender.GetMentionString()})
 	history := chat.History
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: msg, // TODO: prefix <USER>: <MSG> ?
-		Name:    chat.cleanUserName(m.Author.Username),
+		Content: msg,
+		Name:    sender.GetDisplayName(),
 	}
 
 	var err error
@@ -66,7 +68,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	// TODO: improve this log
 	logrus.
-		WithField("sender", m.Author.Username).
+		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")
