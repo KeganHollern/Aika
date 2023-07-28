@@ -13,6 +13,7 @@ ChatGPT powered waifu.
 - Waifu Image Gen
 - Random Number Gen
 - MyAnimeList Search
+- Can @ chat members
 
 ## Developer Notes
 
