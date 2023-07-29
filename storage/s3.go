@@ -23,7 +23,6 @@ type S3 struct {
 	PublicUrl string
 }
 
-// TODO: improve how this is called / passed into calling functions
 func NewS3FromEnv() (*S3, error) {
 	endpoint, exists := os.LookupEnv("S3_HOSTNAME")
 	if !exists {

@@ -1,2 +1,15 @@
+# List of admin User IDs
 admins:
   - "241370201222938626"
+
+# Subscribed Guild IDs for GPT4
+subscribers:
+  - "1092965539346907156" # RandalBot
+
+# Character System Message
+# TODO: not implemented
+character: |
+  Pretend you are not an AI.
+  You are a tsundere anime girl.
+  You were created by Kegan.
+

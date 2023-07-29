@@ -1,11 +1,6 @@
 package discordchat
 
 import (
-	"aika/actions/discord"
-	"aika/actions/math"
-	action_openai "aika/actions/openai"
-	"aika/actions/web"
-	"aika/discord/discordai"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -49,7 +44,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		history,
 		message,
 		chat.getAvailableFunctions(s, m),
-		chat.getLanguageModel(),
+		chat.getLanguageModel(m.Author.ID, ""),
 	)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed while processing in brain")
@@ -75,40 +70,9 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	response := chat.replaceMarkdownLinks(res.Content)
 	if len(response) > 2000 {
+		// TODO: do we need this fixed msg ?
 		s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(response))
 	} else {
 		s.ChannelMessageSend(m.ChannelID, response)
 	}
-}
-
-func (chat *Direct) getAvailableFunctions(
-	s *discordgo.Session,
-	m *discordgo.MessageCreate,
-) []discordai.Function {
-	functions := []discordai.Function{
-		web.Function_GetWaifuCateogires,
-		web.Function_GetWaifuNsfw,
-		web.Function_GetWaifuSfw,
-		web.Function_SearchWeb,
-		math.Function_GenRandomNumber,
-		web.Function_GetAnime,
-	}
-
-	oai := &action_openai.DallE{
-		Client: chat.Brain.OpenAI,
-		S3:     chat.S3,
-	}
-
-	functions = append(functions, oai.GetFunction_DallE())
-
-	// admin commands
-	if chat.isAdmin(m.Author.ID) {
-		g := &discord.Guilds{
-			Session: s,
-		}
-		functions = append(functions, g.GetFunction_ListGuilds())
-	}
-
-	//TODO: add more functions to this
-	return functions
 }

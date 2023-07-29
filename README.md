@@ -33,7 +33,9 @@ $ ./run.sh latest
 
 ## TODO
 
-Improve guild/chat "getLanguageModel" integration
-Improve "getAvailableFunctions" to reduce duplication
 Add more admin commands
 Improve logging
+Implement configurable character message
+Token counting rather than history limit?
+Drop history after X hours? How can we be cost effective?
+"Reminder" function -- ask aika what she wants added

@@ -1,11 +1,6 @@
 package discordchat
 
 import (
-	"aika/actions/discord"
-	"aika/actions/math"
-	action_openai "aika/actions/openai"
-	"aika/actions/web"
-	"aika/discord/discordai"
 	"errors"
 	"fmt"
 	"strings"
@@ -51,7 +46,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	history := chat.getHistory(m.ChannelID)
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: msg, // TODO: prefix <USER>: <MSG> ?
+		Content: msg,
 		Name:    sender.GetDisplayName(),
 	}
 
@@ -63,7 +58,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		history,
 		message,
 		chat.getAvailableFunctions(s, m),
-		chat.getLanguageModel(),
+		chat.getLanguageModel(m.Author.ID, m.GuildID),
 	)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed while processing in brain")
@@ -155,37 +150,4 @@ func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]*Chat
 	}
 
 	return participants, nil
-}
-
-func (chat *Guild) getAvailableFunctions(
-	s *discordgo.Session,
-	m *discordgo.MessageCreate,
-) []discordai.Function {
-
-	functions := []discordai.Function{
-		web.Function_GetWaifuCateogires,
-		web.Function_GetWaifuNsfw,
-		web.Function_GetWaifuSfw,
-		web.Function_SearchWeb,
-		math.Function_GenRandomNumber,
-		web.Function_GetAnime,
-	}
-
-	oai := &action_openai.DallE{
-		Client: chat.Brain.OpenAI,
-		S3:     chat.S3,
-	}
-
-	functions = append(functions, oai.GetFunction_DallE())
-
-	// admin commands
-	if chat.isAdmin(m.Author.ID) {
-		g := &discord.Guilds{
-			Session: s,
-		}
-		functions = append(functions, g.GetFunction_ListGuilds())
-	}
-
-	//TODO: add more functions to this
-	return functions
 }

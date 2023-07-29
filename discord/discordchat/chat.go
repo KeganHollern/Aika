@@ -1,6 +1,10 @@
 package discordchat
 
 import (
+	"aika/actions/discord"
+	"aika/actions/math"
+	action_openai "aika/actions/openai"
+	"aika/actions/web"
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/storage"
@@ -15,27 +19,50 @@ import (
 
 type Chat struct {
 	Ctx    context.Context
-	ChatID string
+	ChatID string // TODO: find a purpose ?
 	Brain  *discordai.AIBrain
 	S3     *storage.S3
 	Cfg    *storage.Disk
 	Mutex  sync.Mutex
 }
 
-// TODO: need to feed this function channel
-// and guild IDs so the model can be determined better
-func (c *Chat) getLanguageModel() ai.LanguageModel {
+func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageModel {
 	// RandalBot guild gets GPT4
-	if c.ChatID == "1092965539346907156" {
+	if c.isSubscriber(guildID) {
 		return ai.LanguageModel_GPT4
 	}
-	// kegan DM channel
-	if c.ChatID == "1132494588330901524" {
+
+	// admins
+	if c.isAdmin(senderID) {
 		return ai.LanguageModel_GPT4
 	}
 
 	//TODO: premium chats?
 	return ai.LanguageModel_GPT35
+}
+
+func (c *Chat) isSubscriber(guildID string) bool {
+	data, ok := c.Cfg.Get("subscribers")
+	if !ok {
+		return false // no admins configred at all
+	}
+	array, ok := data.([]interface{})
+	if !ok {
+		logrus.WithField("data", data).Warnln("invalid 'subscribers' format in config.yaml")
+		return false
+	}
+
+	for _, v := range array {
+		str, ok := v.(string)
+		if !ok {
+			logrus.WithField("data", v).Warnln("invalid 'subscribers' entry in config.yaml")
+			continue
+		}
+		if str == guildID {
+			return true
+		}
+	}
+	return false
 }
 
 // isAdmin reads "admins" from the config file
@@ -87,4 +114,36 @@ func (c *Chat) replaceMarkdownLinks(md string) string {
 	}
 
 	return md
+}
+
+func (c *Chat) getAvailableFunctions(
+	s *discordgo.Session,
+	m *discordgo.MessageCreate,
+) []discordai.Function {
+	functions := []discordai.Function{
+		web.Function_GetWaifuCateogires,
+		web.Function_GetWaifuNsfw,
+		web.Function_GetWaifuSfw,
+		web.Function_SearchWeb,
+		math.Function_GenRandomNumber,
+		web.Function_GetAnime,
+	}
+
+	oai := &action_openai.DallE{
+		Client: c.Brain.OpenAI,
+		S3:     c.S3,
+	}
+
+	functions = append(functions, oai.GetFunction_DallE())
+
+	// admin commands
+	if c.isAdmin(m.Author.ID) {
+		g := &discord.Guilds{
+			Session: s,
+		}
+		functions = append(functions, g.GetFunction_ListGuilds())
+	}
+
+	//TODO: add more functions to this
+	return functions
 }
