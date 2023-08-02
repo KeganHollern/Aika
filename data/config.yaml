@@ -6,6 +6,10 @@ admins:
 subscribers:
   - "1092965539346907156" # RandalBot
 
+# Number of previous messages to store as history
+# TODO: make this *previous tokens* so we can control token in/out
+history: 26
+
 # Character System Message
 # TODO: not implemented
 character: |

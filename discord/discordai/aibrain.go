@@ -15,8 +15,14 @@ import (
 //go:embed system.txt
 var sys string
 
+const (
+	failAttempts = 2
+)
+
 type AIBrain struct {
 	OpenAI *openai.Client
+
+	HistorySize int
 }
 
 // process a message & return the new chat history
@@ -42,7 +48,7 @@ func (brain *AIBrain) Process(
 	}
 
 	failedFuncCall := false
-	for i := 0; i < 2; i++ {
+	for i := 0; i < failAttempts; i++ {
 
 		// get openai response
 		req := ai.ChatRequest{
@@ -64,8 +70,9 @@ func (brain *AIBrain) Process(
 		newHistory = append(newHistory, res)
 
 		// trim history
-		if len(newHistory) > 50 {
-			newHistory = newHistory[len(newHistory)-50:]
+		// TODO: trim based on TOKEN COUNT
+		if len(newHistory) > brain.HistorySize {
+			newHistory = newHistory[len(newHistory)-brain.HistorySize:]
 		}
 
 		// if FunctionCall is nil - then OpenAI sent us a human response :)

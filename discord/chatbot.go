@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -12,6 +13,10 @@ import (
 	"aika/discord/discordai"
 	"aika/discord/discordchat"
 	"aika/storage"
+)
+
+var (
+	ErrInvalidHistoryConfiguration = errors.New("invalid history configuration value")
 )
 
 type ChatBot struct {
@@ -38,12 +43,28 @@ func StartChatbot(
 		return nil, fmt.Errorf("failed to start session; %w", err)
 	}
 
+	// extract configuration
+	historySize, ok := cfg.Get("history")
+	if !ok {
+		return nil, ErrInvalidHistoryConfiguration
+	}
+
+	historyLen, ok := historySize.(int)
+	if !ok {
+		return nil, ErrInvalidHistoryConfiguration
+	}
+
+	if historyLen <= 0 {
+		return nil, ErrInvalidHistoryConfiguration
+	}
+
 	// create bot object
 	bot := &ChatBot{
 		Ctx:     ctx,
 		Session: dg,
 		Brain: &discordai.AIBrain{
-			OpenAI: client,
+			OpenAI:      client,
+			HistorySize: historyLen,
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),
 		DirectChats: make(map[string]*discordchat.Direct),
