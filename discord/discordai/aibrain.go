@@ -23,6 +23,7 @@ type AIBrain struct {
 	OpenAI *openai.Client
 
 	HistorySize int
+	Character   string
 }
 
 // process a message & return the new chat history
@@ -140,6 +141,6 @@ func (brain *AIBrain) BuildSystemMessage(
 
 	return openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fmt.Sprintf(sys, memberNames, memberMentions),
+		Content: fmt.Sprintf(sys, memberNames, memberMentions, brain.Character),
 	}
 }

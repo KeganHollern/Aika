@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	ErrInvalidHistoryConfiguration = errors.New("invalid history configuration value")
+	ErrInvalidHistoryConfiguration   = errors.New("invalid history configuration value")
+	ErrInvalidCharacterConfiguration = errors.New("invalid character configuration value")
 )
 
 type ChatBot struct {
@@ -58,6 +59,15 @@ func StartChatbot(
 		return nil, ErrInvalidHistoryConfiguration
 	}
 
+	characterCfg, ok := cfg.Get("character")
+	if !ok {
+		return nil, ErrInvalidCharacterConfiguration
+	}
+	character, ok := characterCfg.(string)
+	if !ok {
+		return nil, ErrInvalidCharacterConfiguration
+	}
+
 	// create bot object
 	bot := &ChatBot{
 		Ctx:     ctx,
@@ -65,6 +75,7 @@ func StartChatbot(
 		Brain: &discordai.AIBrain{
 			OpenAI:      client,
 			HistorySize: historyLen,
+			Character:   character,
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),
 		DirectChats: make(map[string]*discordchat.Direct),
