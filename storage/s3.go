@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrNoDataTransfered = errors.New("no data transfered")
 )
 
 type S3 struct {
@@ -138,6 +143,15 @@ func (s *S3) StreamUpload(stream io.ReadCloser, key string) error {
 		return fmt.Errorf("failed putobject; %w", err)
 	}
 
+	exists, err := s.KeyExists(key)
+	if err != nil {
+		return fmt.Errorf("failed to check put succeeded; %w", err)
+	}
+
+	if !exists {
+		return ErrNoDataTransfered
+	}
+
 	return nil
 }
 
@@ -155,7 +169,7 @@ func (s *S3) KeyExists(key string) (bool, error) {
 	// Create a new S3 service
 	s3Svc := s3.New(sess)
 
-	_, err = s3Svc.HeadObject(&s3.HeadObjectInput{
+	out, err := s3Svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(key),
 	})
@@ -171,5 +185,10 @@ func (s *S3) KeyExists(key string) (bool, error) {
 		}
 		return false, fmt.Errorf("failed to headobject not a awserr; %w", err)
 	}
+	// don't count a key as 'existing' if its 0 bytes
+	if out.ContentLength != nil && *out.ContentLength == 0 {
+		return false, nil
+	}
+
 	return true, nil
 }

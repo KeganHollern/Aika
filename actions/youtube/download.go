@@ -4,6 +4,7 @@ import (
 	"aika/discord/discordai"
 	"aika/storage"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/sashabaranov/go-openai"
@@ -80,7 +81,13 @@ func (ytwrapper *Youtube) action_DownloadYoutube(url string) (string, error) {
 	}
 
 	// stream video directly to S3
-	err = ytwrapper.S3.StreamUpload(stream, path)
+	// retry if 0 data transfers (idk? bug?)
+	err = storage.ErrNoDataTransfered
+	i := 0
+	for errors.Is(err, storage.ErrNoDataTransfered) && i < 2 {
+		err = ytwrapper.S3.StreamUpload(stream, path)
+		i++
+	}
 	if err != nil {
 		return "", fmt.Errorf("failed to upload stream to s3; %w", err)
 	}
