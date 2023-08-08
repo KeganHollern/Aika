@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/sirupsen/logrus"
 )
 
@@ -102,6 +103,35 @@ func (s *S3) DownloadAndUpload(url, key string) error {
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(buf.Bytes()),
+	})
+	if err != nil {
+		return fmt.Errorf("failed putobject; %w", err)
+	}
+
+	return nil
+}
+
+// StreamUpload streams data to S3 in chunks.
+// This reduces memory and disk usage.
+func (s *S3) StreamUpload(stream io.ReadCloser, key string) error {
+	// Create a new session with the custom endpoint and credentials
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(s.Region),
+		Endpoint:    aws.String(s.Endpoint),
+		Credentials: credentials.NewStaticCredentials(s.AccessKey, s.SecretKey, ""),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to connect to s3; %w", err)
+	}
+
+	uploader := s3manager.NewUploader(sess)
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(key),
+		Body:   stream,
+	}, func(u *s3manager.Uploader) {
+		u.PartSize = 10 * 1024 * 1024 // 10MB part size
+		u.LeavePartsOnError = false   // on fail delete garbage
 	})
 	if err != nil {
 		return fmt.Errorf("failed putobject; %w", err)

@@ -131,12 +131,18 @@ func (c *Chat) getAvailableFunctions(
 		web.Function_GetAnime,
 	}
 
+	// openAI stuff
 	oai := &action_openai.DallE{
 		Client: c.Brain.OpenAI,
 		S3:     c.S3,
 	}
-
 	functions = append(functions, oai.GetFunction_DallE())
+
+	// youtube stuff
+	yt := &youtube.Youtube{
+		S3: c.S3,
+	}
+	functions = append(functions, yt.GetFunction_DownloadYoutube())
 
 	// admin commands
 	if c.isAdmin(m.Author.ID) {
