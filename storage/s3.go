@@ -2,11 +2,13 @@ package storage
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -138,4 +140,32 @@ func (s *S3) StreamUpload(stream io.ReadCloser, key string) error {
 	}
 
 	return nil
+}
+
+func (s *S3) KeyExists(key string) (bool, error) {
+	// Create a new session with the custom endpoint and credentials
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(s.Region),
+		Endpoint:    aws.String(s.Endpoint),
+		Credentials: credentials.NewStaticCredentials(s.AccessKey, s.SecretKey, ""),
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to connect to s3; %w", err)
+	}
+
+	// Create a new S3 service
+	s3Svc := s3.New(sess)
+
+	_, err = s3Svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var responseError *awshttp.ResponseError
+		if errors.As(err, &responseError) && responseError.ResponseError.HTTPStatusCode() == http.StatusNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to headobject; %w", err)
+	}
+	return true, nil
 }

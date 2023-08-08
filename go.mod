@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/aws/aws-sdk-go v1.44.306
+	github.com/aws/aws-sdk-go-v2 v1.20.1
 	github.com/buger/jsonparser v1.1.1
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gocolly/colly v1.2.0
@@ -20,6 +21,7 @@ require (
 	github.com/antchfx/htmlquery v1.3.0 // indirect
 	github.com/antchfx/xmlquery v1.3.17 // indirect
 	github.com/antchfx/xpath v1.2.4 // indirect
+	github.com/aws/smithy-go v1.14.1 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/dop251/goja v0.0.0-20230402114112-623f9dda9079 // indirect

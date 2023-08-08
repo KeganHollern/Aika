@@ -54,24 +54,36 @@ func (ytwrapper *Youtube) handler_DownloadYoutube(msgMap map[string]interface{})
 }
 
 func (ytwrapper *Youtube) action_DownloadYoutube(url string) (string, error) {
-
 	c := yt.Client{}
 	vid, err := c.GetVideo(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to find youtube video; %w", err)
 	}
+
+	path := "user-content/youtube/" + vid.ID + ".mp4"
+
+	// if already exists just give the user the existing video
+	exists, err := ytwrapper.S3.KeyExists(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to check s3; %w", err)
+	}
+	if exists {
+		return fmt.Sprintf("%s/%s", ytwrapper.S3.PublicUrl, path), nil
+	}
+
 	formats := vid.Formats.WithAudioChannels()
+	// TODO: download smallest fucking format
+	// to save me money lmfao
 	stream, _, err := c.GetStream(vid, &formats[0])
 	if err != nil {
 		return "", fmt.Errorf("failed to get stream; %w", err)
 	}
 
 	// stream video directly to S3
-	path := "user-content/youtube/" + vid.ID + ".mp4"
 	err = ytwrapper.S3.StreamUpload(stream, path)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload stream to s3; %w", err)
 	}
 
-	return path, nil
+	return fmt.Sprintf("%s/%s", ytwrapper.S3.PublicUrl, path), nil
 }
