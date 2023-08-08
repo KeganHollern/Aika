@@ -14,6 +14,8 @@ ChatGPT powered waifu.
 - Random Number Gen
 - MyAnimeList Search
 - Can @ chat members
+- Youtube Search
+- Youtube Video Download
 
 ## Developer Notes
 
@@ -22,6 +24,7 @@ ChatGPT powered waifu.
 - Dockerized for easy distribution
 - Guild and DM specific GPT version control
 - Guild and DM specific function control
+- Youtube 'downloads' go to S3 storage
 
 ## Run
 
@@ -35,7 +38,7 @@ $ ./run.sh latest
 
 Add more admin commands
 Improve logging
-Implement configurable character message
 Token counting rather than history limit?
 Drop history after X hours? How can we be cost effective?
 "Reminder" function -- ask aika what she wants added
+Let aika pull photos of 'herself' from S3

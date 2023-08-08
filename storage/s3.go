@@ -2,14 +2,13 @@ package storage
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -161,11 +160,16 @@ func (s *S3) KeyExists(key string) (bool, error) {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		var responseError *awshttp.ResponseError
-		if errors.As(err, &responseError) && responseError.ResponseError.HTTPStatusCode() == http.StatusNotFound {
-			return false, nil
+		if aerr, ok := err.(awserr.Error); ok {
+			code := aerr.Code()
+			switch code {
+			case s3.ErrCodeNoSuchKey, "NotFound": // couldn't find a "NotFound" and that's what i need lmfao
+				return false, nil
+			default:
+				return false, fmt.Errorf("failed to headobject; %w", err)
+			}
 		}
-		return false, fmt.Errorf("failed to headobject; %w", err)
+		return false, fmt.Errorf("failed to headobject not a awserr; %w", err)
 	}
 	return true, nil
 }
