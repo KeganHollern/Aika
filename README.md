@@ -20,7 +20,7 @@ ChatGPT powered waifu.
 ## Developer Notes
 
 - Admin Commands
-- S3 DallE Proxy
+- DallE generations go to S3 storage
 - Dockerized for easy distribution
 - Guild and DM specific GPT version control
 - Guild and DM specific function control
