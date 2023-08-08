@@ -5,6 +5,7 @@ import (
 	"aika/actions/math"
 	action_openai "aika/actions/openai"
 	"aika/actions/web"
+	"aika/actions/youtube"
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/storage"
@@ -125,6 +126,7 @@ func (c *Chat) getAvailableFunctions(
 		web.Function_GetWaifuNsfw,
 		web.Function_GetWaifuSfw,
 		web.Function_SearchWeb,
+		youtube.Function_SearchYoutube,
 		math.Function_GenRandomNumber,
 		web.Function_GetAnime,
 	}
