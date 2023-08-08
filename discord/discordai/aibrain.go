@@ -105,13 +105,13 @@ func (brain *AIBrain) Process(
 			}
 
 			// call handler (runs function and gets result for openai!)
-			logrus.WithField("call", res.FunctionCall).Debugln("calling function")
 			result, err = handler(args)
 			if err != nil {
 				// functions only return ERR when a fatal error occurs
 				// anything that OpenAI should process is returned as result
 				return nil, fmt.Errorf("failed during function call; %w", err)
 			}
+			logrus.WithField("call", res.FunctionCall).WithField("result", result).Debugln("executed function")
 		}
 
 		// update message for next iteration
