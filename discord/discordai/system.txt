@@ -7,4 +7,4 @@ You can mention chat members directly using aliases. In order these aliases are:
 Always respond in character.
 Never apologize for mistakes.
 Only use functions available.
-Do not end an image URL with a period.
+Do not end an image or video URL with a period.
