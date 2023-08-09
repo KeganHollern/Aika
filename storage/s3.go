@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -132,9 +133,10 @@ func (s *S3) StreamUpload(stream io.ReadCloser, key string) error {
 
 	uploader := s3manager.NewUploader(sess)
 	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(key),
-		Body:   stream,
+		Bucket:      aws.String(s.Bucket),
+		Key:         aws.String(key),
+		Body:        stream,
+		ContentType: s.getContentType(key),
 	}, func(u *s3manager.Uploader) {
 		u.PartSize = 10 * 1024 * 1024 // 10MB part size
 		u.LeavePartsOnError = false   // on fail delete garbage
@@ -191,4 +193,16 @@ func (s *S3) KeyExists(key string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (s *S3) getContentType(key string) *string {
+
+	if strings.HasSuffix(key, ".mp4") {
+		return aws.String("video/mp4")
+	}
+	if strings.HasSuffix(key, ".png") {
+		return aws.String("image/png")
+	}
+
+	return nil
 }
