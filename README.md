@@ -1,5 +1,11 @@
 # Aika
-[![forthebadge](https://forthebadge.com/images/badges/made-with-go.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/kinda-sfw.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
+
+![Go](https://img.shields.io/badge/go-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)
+![ChatGPT](https://img.shields.io/badge/chatGPT-74aa9c?style=for-the-badge&logo=openai&logoColor=white)
+![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)
+![DuckDuckGo](https://img.shields.io/badge/DuckDuckGo-DE5833?style=for-the-badge&logo=DuckDuckGo&logoColor=white)
 
 ChatGPT powered waifu.
 
@@ -29,7 +35,7 @@ ChatGPT powered waifu.
 ## Run
 
 ```shell
-$ ./run.sh latest
+$ ./run.sh beta
 ```
 
 *see [run.sh](./run.sh) for environment variables required.*
@@ -42,3 +48,4 @@ Token counting rather than history limit?
 Drop history after X hours? How can we be cost effective?
 "Reminder" function -- ask aika what she wants added
 Let aika pull photos of 'herself' from S3
+Improve youtube download
