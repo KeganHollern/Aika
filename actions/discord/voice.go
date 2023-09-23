@@ -203,6 +203,9 @@ func (v *Voice) action_forceSay(message string) error {
 		return err
 	}
 
+	//TODO: could store TTS in S3 in order to cache common phrases
+	// this would likely save me money :)
+
 	stop := make(chan bool)
 	dgvoice.OnError = func(str string, err error) {
 		logrus.WithError(err).Errorln(str)
