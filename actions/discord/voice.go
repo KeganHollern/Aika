@@ -127,7 +127,7 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 		}
 	} else {
 		v.Connection, err = v.Session.ChannelVoiceJoin(guildID, channelID, false, false)
-		v.Connection.LogLevel = discordgo.LogDebug
+		//v.Connection.LogLevel = discordgo.LogDebug
 	}
 	if err != nil {
 		return fmt.Errorf("failed to join voice chat; %w", err)
