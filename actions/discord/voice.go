@@ -107,16 +107,17 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 		this is kinda scuffed
 
 	*/
-	/*
-		v.Connection.AddHandler(func(vc *discordgo.VoiceConnection, vs *discordgo.VoiceSpeakingUpdate) {
-			if vs.UserID != "241370201222938626" {
-				return
-			}
 
-			v.Connection.Speaking(vs.Speaking)
-		})
-	*/
+	v.Connection.AddHandler(func(vc *discordgo.VoiceConnection, vs *discordgo.VoiceSpeakingUpdate) {
+		if vs.UserID != "241370201222938626" {
+			return
+		}
+		// from here I can convert USER->SSRC
 
+		logrus.WithField("update", vs).Info("kegan void update")
+	})
+
+	// TODO: figure out how to pipe "OpusRecv" into per-ssrc channels :)
 	go func() {
 		err := v.Connection.Speaking(true)
 		if err != nil {
@@ -125,6 +126,8 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 		}
 		// listen and echo back voices
 		for p := range v.Connection.OpusRecv {
+			// from here I can identify SSRC->USER and filter packets by sender
+			// allowing Aika to build "voice audio" on a per-sender basis
 			v.Connection.OpusSend <- p.Opus
 		}
 
