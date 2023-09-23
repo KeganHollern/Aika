@@ -1,4 +1,8 @@
 FROM golang:1.19 as builder
+# Install required C libraries and tools
+RUN apk add --no-cache git gcc musl-dev pkgconf opus-dev alsa-lib alsa-lib-dev
+# Set PKG_CONFIG_PATH for alsa
+ENV PKG_CONFIG_PATH=/usr/lib/pkgconfig
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
