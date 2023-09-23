@@ -45,6 +45,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		message,
 		chat.getAvailableFunctions(s, m),
 		chat.getLanguageModel(m.Author.ID, ""),
+		chat.getInternalArgs(s, m),
 	)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed while processing in brain")

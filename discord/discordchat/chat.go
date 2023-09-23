@@ -10,6 +10,7 @@ import (
 	"aika/discord/discordai"
 	"aika/storage"
 	"context"
+	"errors"
 	"regexp"
 	"strings"
 	"sync"
@@ -18,6 +19,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var global_voice_functions *discord.Voice
+
 type Chat struct {
 	Ctx    context.Context
 	ChatID string // TODO: find a purpose ?
@@ -25,6 +28,29 @@ type Chat struct {
 	S3     *storage.S3
 	Cfg    *storage.Disk
 	Mutex  sync.Mutex
+}
+
+func (c *Chat) getInternalArgs(
+	s *discordgo.Session,
+	m *discordgo.MessageCreate,
+) map[string]interface{} {
+
+	// get authors voice channel
+	voiceChannel := ""
+	state, err := s.State.VoiceState(m.GuildID, m.Author.ID)
+	if err != nil && !errors.Is(err, discordgo.ErrStateNotFound) {
+		logrus.WithError(err).Errorln("failed to get sender voice state")
+	} else if err == nil {
+		voiceChannel = state.ChannelID
+	}
+
+	// attach discord information from sender
+	return map[string]interface{}{
+		"internal_sender_guildid":   m.GuildID,
+		"internal_sender_channelid": m.ChannelID,
+		"internal_sender_author_id": m.Author.ID,
+		"internal_sender_author_vc": voiceChannel,
+	}
 }
 
 func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageModel {
@@ -151,6 +177,16 @@ func (c *Chat) getAvailableFunctions(
 		}
 		functions = append(functions, g.GetFunction_ListGuilds())
 	}
+
+	// voice commands need a singleton & not constructed on every call
+	if global_voice_functions == nil {
+		global_voice_functions = &discord.Voice{
+			Session: s,
+		}
+	}
+
+	functions = append(functions, global_voice_functions.GetFunction_JoinChannel())
+	functions = append(functions, global_voice_functions.GetFunction_LeaveChannel())
 
 	//TODO: add more functions to this
 	return functions

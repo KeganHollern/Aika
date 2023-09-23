@@ -35,6 +35,7 @@ func (brain *AIBrain) Process(
 	message openai.ChatCompletionMessage,
 	functions []Function,
 	model ai.LanguageModel,
+	internalArgs map[string]interface{},
 ) ([]openai.ChatCompletionMessage, error) {
 
 	// copy history to a new slice
@@ -102,6 +103,11 @@ func (brain *AIBrain) Process(
 			err = json.Unmarshal([]byte(res.FunctionCall.Arguments), &args)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal openai args; %w", err)
+			}
+
+			// append internal args
+			for k, v := range internalArgs {
+				args[k] = v
 			}
 
 			// call handler (runs function and gets result for openai!)
