@@ -188,6 +188,11 @@ func (c *Chat) getAvailableFunctions(
 	functions = append(functions, global_voice_functions.GetFunction_JoinChannel())
 	functions = append(functions, global_voice_functions.GetFunction_LeaveChannel())
 
+	// admins can force aika to say stuff
+	if c.isAdmin(m.Author.ID) {
+		functions = append(functions, global_voice_functions.GetFunction_ForceSay())
+	}
+
 	//TODO: add more functions to this
 	return functions
 }

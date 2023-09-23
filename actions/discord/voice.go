@@ -2,10 +2,15 @@ package discord
 
 import (
 	"aika/discord/discordai"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
+	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
+
+	htgotts "github.com/hegedustibor/htgo-tts"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 	"github.com/sirupsen/logrus"
@@ -30,6 +35,30 @@ func (v *Voice) GetFunction_LeaveChannel() discordai.Function {
 	}
 }
 
+// admin command
+func (v *Voice) GetFunction_ForceSay() discordai.Function {
+	return discordai.Function{
+		Definition: definition_forceSay,
+		Handler:    v.handle_forceSay,
+	}
+}
+
+var definition_forceSay = openai.FunctionDefinition{
+	Name:        "forceSpeakMessage",
+	Description: "Force a message to be spoken in the current voice chat.",
+
+	Parameters: jsonschema.Definition{
+		Type: jsonschema.Object,
+		Properties: map[string]jsonschema.Definition{
+			"message": {
+				Type:        jsonschema.String,
+				Description: "message to speak in voice chat.",
+				Properties:  map[string]jsonschema.Definition{},
+			},
+		},
+		Required: []string{"message"},
+	},
+}
 var definition_leaveChannel = openai.FunctionDefinition{
 	Name:        "leaveVoiceChat",
 	Description: "Disconnect from the voice chat channel.",
@@ -65,6 +94,17 @@ func (v *Voice) handle_joinChannel(msgMap map[string]interface{}) (string, error
 
 	return "connected successfully", nil
 }
+
+func (v *Voice) handle_forceSay(msgMap map[string]interface{}) (string, error) {
+	// call function
+	err := v.action_forceSay(msgMap["message"].(string))
+	if err != nil {
+		return "", err
+	}
+
+	return "spoken successfully", nil
+}
+
 func (v *Voice) handle_leaveChannel(msgMap map[string]interface{}) (string, error) {
 	// call function
 	err := v.action_leaveChannel()
@@ -93,7 +133,7 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 		return fmt.Errorf("failed to join voice chat; %w", err)
 	}
 
-	logrus.Infoln("JOINED VOICE")
+	//logrus.Infoln("JOINED VOICE")
 
 	// TODO: dump channel participants for aika ?
 	// TODO: maybe start sending/recieve loops and just pipe those into chat message?
@@ -137,7 +177,7 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 	return nil
 }
 func (v *Voice) action_leaveChannel() error {
-	logrus.Println("LEAVE CHAN")
+	//logrus.Println("LEAVE CHAN")
 	if v.Connection == nil {
 		return nil // not connected
 	}
@@ -149,4 +189,33 @@ func (v *Voice) action_leaveChannel() error {
 		return fmt.Errorf("failed disconnect voice chat; %w", err)
 	}
 	return nil
+}
+
+func (v *Voice) action_forceSay(message string) error {
+	if v.Connection == nil {
+		return nil // not connected
+	}
+
+	// generate TTS
+	speech := htgotts.Speech{Folder: "assets/audio", Language: "en"}
+	path, err := speech.CreateSpeechFile(message, hashString(message))
+	if err != nil {
+		return err
+	}
+
+	stop := make(chan bool)
+	dgvoice.OnError = func(str string, err error) {
+		logrus.WithError(err).Errorln(str)
+	}
+	dgvoice.PlayAudioFile(v.Connection, path, stop)
+	close(stop)
+
+	return nil
+}
+
+// hashString takes an input string and returns its SHA-256 hash.
+func hashString(input string) string {
+	hash := sha256.New()
+	hash.Write([]byte(input))
+	return hex.EncodeToString(hash.Sum(nil))
 }

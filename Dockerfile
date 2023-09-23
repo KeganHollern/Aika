@@ -8,4 +8,7 @@ FROM alpine:latest as runtime
 RUN apk --no-cache add ca-certificates
 WORKDIR /aika/
 COPY --from=builder /app/main .
+
+# TODO: configure ffmpeg and opus libraries
+
 CMD ["./main"]  
