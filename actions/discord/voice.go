@@ -158,21 +158,24 @@ func (v *Voice) action_joinChannel(guildID string, channelID string) error {
 	})
 
 	// TODO: figure out how to pipe "OpusRecv" into per-ssrc channels :)
-	go func() {
-		err := v.Connection.Speaking(true)
-		if err != nil {
-			logrus.WithError(err).Errorln("failed to set speaking")
-			return
-		}
-		// listen and echo back voices
-		for p := range v.Connection.OpusRecv {
-			// from here I can identify SSRC->USER and filter packets by sender
-			// allowing Aika to build "voice audio" on a per-sender basis
-			v.Connection.OpusSend <- p.Opus
-		}
+	/*
+		go func() {
+			err := v.Connection.Speaking(true)
+			if err != nil {
+				logrus.WithError(err).Errorln("failed to set speaking")
+				return
+			}
+			// listen and echo back voices
+			for p := range v.Connection.OpusRecv {
+				// from here I can identify SSRC->USER and filter packets by sender
+				// allowing Aika to build "voice audio" on a per-sender basis
+				//v.Connection.OpusSend <- p.Opus
 
-		v.Connection.Speaking(false)
-	}()
+			}
+
+			v.Connection.Speaking(false)
+		}()
+	*/
 
 	return nil
 }
