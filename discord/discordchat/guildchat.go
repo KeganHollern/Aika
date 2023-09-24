@@ -12,7 +12,6 @@ import (
 
 type Guild struct {
 	Chat
-
 	// chat history
 	History map[string][]openai.ChatCompletionMessage
 }
@@ -57,9 +56,9 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		system,
 		history,
 		message,
-		chat.getAvailableFunctions(s, m),
+		chat.getAvailableFunctions(s, m.Author),
 		chat.getLanguageModel(m.Author.ID, m.GuildID),
-		chat.getInternalArgs(s, m),
+		chat.getInternalArgs(s, m.Author, m.GuildID, m.ChannelID),
 	)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed while processing in brain")

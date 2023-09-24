@@ -158,7 +158,7 @@ func (bot *ChatBot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 // --- chat constructors
 
 func (bot *ChatBot) newGuildChat(guildId string) *discordchat.Guild {
-	return &discordchat.Guild{
+	chat := &discordchat.Guild{
 		Chat: discordchat.Chat{
 			Ctx:    bot.Ctx,
 			ChatID: guildId,
@@ -169,6 +169,11 @@ func (bot *ChatBot) newGuildChat(guildId string) *discordchat.Guild {
 		},
 		History: make(map[string][]openai.ChatCompletionMessage),
 	}
+	// enable voice chat for this guild
+	// TODO: setting for this so i can monetize ?
+	chat.InitVoiceChat(bot.Session)
+
+	return chat
 }
 
 func (bot *ChatBot) newDirectChat(channelId string) *discordchat.Direct {

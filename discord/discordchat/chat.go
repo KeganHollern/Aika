@@ -16,28 +16,34 @@ import (
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 )
 
-var global_voice_functions *discord.Voice
+//var global_voice_functions *discord.Voice
 
 type Chat struct {
 	Ctx    context.Context
-	ChatID string // TODO: find a purpose ?
+	ChatID string // unique identifier for this chat (DM/Guild/ect)
 	Brain  *discordai.AIBrain
 	S3     *storage.S3
 	Cfg    *storage.Disk
 	Mutex  sync.Mutex
+
+	// internal voice chat connection for this
+	voice *Voice
 }
 
 func (c *Chat) getInternalArgs(
 	s *discordgo.Session,
-	m *discordgo.MessageCreate,
+	user *discordgo.User,
+	guildid string,
+	channelid string,
 ) map[string]interface{} {
 
 	// get authors voice channel
 	voiceChannel := ""
-	state, err := s.State.VoiceState(m.GuildID, m.Author.ID)
+	state, err := s.State.VoiceState(guildid, user.ID)
 	if err != nil && !errors.Is(err, discordgo.ErrStateNotFound) {
 		logrus.WithError(err).Errorln("failed to get sender voice state")
 	} else if err == nil {
@@ -46,9 +52,9 @@ func (c *Chat) getInternalArgs(
 
 	// attach discord information from sender
 	return map[string]interface{}{
-		"internal_sender_guildid":   m.GuildID,
-		"internal_sender_channelid": m.ChannelID,
-		"internal_sender_author_id": m.Author.ID,
+		"internal_sender_guildid":   guildid,
+		"internal_sender_channelid": channelid,
+		"internal_sender_author_id": guildid,
 		"internal_sender_author_vc": voiceChannel,
 	}
 }
@@ -145,7 +151,7 @@ func (c *Chat) replaceMarkdownLinks(md string) string {
 
 func (c *Chat) getAvailableFunctions(
 	s *discordgo.Session,
-	m *discordgo.MessageCreate,
+	user *discordgo.User,
 ) []discordai.Function {
 	functions := []discordai.Function{
 		web.Function_GetWaifuCateogires,
@@ -171,28 +177,38 @@ func (c *Chat) getAvailableFunctions(
 	functions = append(functions, yt.GetFunction_DownloadYoutube())
 
 	// admin commands
-	if c.isAdmin(m.Author.ID) {
+	if c.isAdmin(user.ID) {
 		g := &discord.Guilds{
 			Session: s,
 		}
 		functions = append(functions, g.GetFunction_ListGuilds())
 	}
 
-	// voice commands need a singleton & not constructed on every call
-	if global_voice_functions == nil {
-		global_voice_functions = &discord.Voice{
-			Session: s,
-		}
-	}
-
-	functions = append(functions, global_voice_functions.GetFunction_JoinChannel())
-	functions = append(functions, global_voice_functions.GetFunction_LeaveChannel())
-
-	// admins can force aika to say stuff
-	if c.isAdmin(m.Author.ID) {
-		functions = append(functions, global_voice_functions.GetFunction_ForceSay())
+	//-- add functions to tell aika to leave/join voice chat
+	if c.voice != nil {
+		functions = append(functions, c.voice.GetFunction_JoinChannel())
+		functions = append(functions, c.voice.GetFunction_LeaveChannel())
 	}
 
 	//TODO: add more functions to this
 	return functions
+}
+
+// support a voice chat connection
+// only supports GUILD chats (afaik)
+func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
+	chat.voice = &Voice{
+		Chat: Chat{
+			Ctx:    chat.Ctx,
+			ChatID: chat.ChatID,
+			Mutex:  sync.Mutex{},
+			Brain:  chat.Brain,
+			S3:     chat.S3,
+			Cfg:    chat.Cfg,
+		},
+		History:    make([]openai.ChatCompletionMessage, 0),
+		SsrcUsers:  make(map[uint32]string),
+		Connection: nil,
+		Session:    s, // ????
+	}
 }

@@ -15,6 +15,9 @@ import (
 //go:embed system.txt
 var sys string
 
+//go:embed system_vc.txt
+var sysVoice string
+
 const (
 	failAttempts = 2
 )
@@ -24,6 +27,20 @@ type AIBrain struct {
 
 	HistorySize int
 	Character   string
+}
+
+func (brain *AIBrain) SpeechToText(
+	ctx context.Context,
+	wavFile string,
+) (string, error) {
+	resp, err := brain.OpenAI.CreateTranscription(ctx, openai.AudioRequest{
+		Model:    openai.Whisper1,
+		FilePath: wavFile,
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Text, nil
 }
 
 // process a message & return the new chat history
@@ -145,8 +162,27 @@ func (brain *AIBrain) BuildSystemMessage(
 	memberNames := strings.Join(displayNames, ", ")
 	memberMentions := strings.Join(mentions, ", ")
 
+	system := fmt.Sprintf(sys, memberNames, memberMentions, brain.Character)
+	logrus.WithField("system", system).Debugln("system message")
+
 	return openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fmt.Sprintf(sys, memberNames, memberMentions, brain.Character),
+		Content: system,
+	}
+}
+
+// build system message from format embedded system_vc.txt
+// this is kinda hacky and dogshit but here I am on saturday writing this
+func (brain *AIBrain) BuildVoiceSystemMessage(
+	displayNames []string,
+) openai.ChatCompletionMessage {
+	memberNames := strings.Join(displayNames, ", ")
+
+	system := fmt.Sprintf(sysVoice, memberNames, brain.Character)
+	logrus.WithField("system", system).Debugln("voice system message")
+
+	return openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: system,
 	}
 }

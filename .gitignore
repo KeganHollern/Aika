@@ -1,3 +1,4 @@
 *.exe
 .vscode/
 *.mp3
+*.wav
