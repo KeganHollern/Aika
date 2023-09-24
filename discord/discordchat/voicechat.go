@@ -367,8 +367,25 @@ func (vc *Voice) genSpeech(content string) ([]string, error) {
 		if strings.TrimSpace(line) == "" {
 			continue // skip blank lines!
 		}
+
 		// generate TTS for the line
 		// TODO: find a better TTS API
+
+		/*
+			response, err := voice.PlayHT{
+				User:   "<snip>",
+				Secret: "<snip>",
+			}.TTS(voice.TTSRequest{
+				Voice: "s3://voice-cloning-zero-shot/993f93ee-27f8-42a9-9415-2f316e7a5a5f/luc/manifest.json",
+				Text:  line,
+			})
+			if err != nil {
+				return nil, err
+			}
+			voice.DownloadMP3(response.Output.URL, "assets/audio", hashString(line)+".mp3")
+			path := "assets/audio/" + hashString(line) + ".mp3"
+		*/
+
 		speech := htgotts.Speech{Folder: "assets/audio", Language: "en"}
 		path, err := speech.CreateSpeechFile(line, hashString(line))
 		if err != nil {
