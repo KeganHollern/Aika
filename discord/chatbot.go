@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	ErrInvalidHistoryConfiguration   = errors.New("invalid history configuration value")
-	ErrInvalidCharacterConfiguration = errors.New("invalid character configuration value")
+	ErrInvalidHistoryConfiguration       = errors.New("invalid history configuration value")
+	ErrInvalidCharacterConfiguration     = errors.New("invalid character configuration value")
+	ErrInvalidTranscriptionConfiguration = errors.New("invalid transcription_prompt configuration value")
 )
 
 type ChatBot struct {
@@ -68,14 +69,24 @@ func StartChatbot(
 		return nil, ErrInvalidCharacterConfiguration
 	}
 
+	transcriptionCfg, ok := cfg.Get("transcription_prompt")
+	if !ok {
+		return nil, ErrInvalidCharacterConfiguration
+	}
+	transPrompt, ok := transcriptionCfg.(string)
+	if !ok {
+		return nil, ErrInvalidTranscriptionConfiguration
+	}
+
 	// create bot object
 	bot := &ChatBot{
 		Ctx:     ctx,
 		Session: dg,
 		Brain: &discordai.AIBrain{
-			OpenAI:      client,
-			HistorySize: historyLen,
-			Character:   character,
+			OpenAI:              client,
+			HistorySize:         historyLen,
+			Character:           character,
+			TranscriptionPrompt: transPrompt,
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),
 		DirectChats: make(map[string]*discordchat.Direct),

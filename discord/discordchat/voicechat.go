@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/dgvoice"
@@ -44,7 +46,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 	if err != nil {
 		logrus.
 			WithError(err).
-			WithField("speaker", speaker).
+			WithField("speaker", speaker.Username).
 			WithField("message", msg).
 			Errorln("failed to get chat members")
 
@@ -73,6 +75,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 
 	// TODO: update called functions in
 	// chat to handle non-text message processing
+	start := time.Now()
 	history, err = chat.Brain.Process(
 		chat.Ctx,
 		system,
@@ -85,7 +88,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 	if err != nil {
 		logrus.
 			WithError(err).
-			WithField("speaker", speaker).
+			WithField("speaker", speaker.Username).
 			WithField("message", msg).
 			Errorln("failed while processing in brain")
 
@@ -95,7 +98,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 	if len(history) == 0 {
 		logrus.
 			WithError(err).
-			WithField("speaker", speaker).
+			WithField("speaker", speaker.Username).
 			WithField("message", msg).
 			Errorln("blank history returned from brain.Process")
 
@@ -113,6 +116,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).
 		WithField("response", res.Content).
+		WithField("latency", time.Since(start)).
 		Infoln("voice chat log")
 
 	response := chat.replaceMarkdownLinks(res.Content)
@@ -122,30 +126,34 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 		return
 	}
 
-	// convert response message to audio
-	file, err := chat.genSpeech(response)
+	// convert response message to audio files
+	files, err := chat.genSpeech(response)
 	if err != nil {
 		logrus.
 			WithError(err).
-			WithField("speaker", speaker).
+			WithField("speaker", speaker.Username).
 			WithField("message", msg).
 			Errorln("failed to generate TTS audio")
 
 		return
 	}
 
-	// play audio
-	err = chat.play(file)
-	if err != nil {
-		logrus.
-			WithError(err).
-			WithField("speaker", speaker).
-			WithField("message", msg).
-			Errorln("failed to play TTS audio")
+	// play audio in sequence
+	for _, file := range files {
+		err = chat.play(file)
+		if err != nil {
+			logrus.
+				WithError(err).
+				WithField("speaker", speaker.Username).
+				WithField("message", msg).
+				Errorln("failed to play TTS audio")
 
+			break
+		}
 	}
 }
 
+// get voice chat members by scanning the voicestates
 func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 
 	participants := []*ChatParticipant{}
@@ -155,13 +163,33 @@ func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 		return nil, fmt.Errorf("failed to get guild details; %w", err)
 	}
 
-	for _, member := range gd.Members {
+	for _, state := range gd.VoiceStates {
+		member, err := chat.Session.State.Member(chat.ChatID, state.UserID)
+		if err != nil {
+			logrus.WithField("state", state).Warnln("failed to get member")
+			continue
+		}
+		if member.User == nil {
+			logrus.WithField("member", member).Warnln("nil user in member")
+			continue
+		}
 		// aika can't see other bots (or herself)
 		if member.User.Bot {
 			continue
 		}
 
-		presence, err := chat.Session.State.Presence(chat.ChatID, member.User.ID)
+		// aika can't talk to people in other channels
+		if state.ChannelID != chat.Connection.ChannelID {
+			continue
+		}
+
+		// aika can't talk to deaf members
+		if state.Deaf {
+			continue
+		}
+
+		// check if the user wants to be visible or not
+		presence, err := chat.Session.State.Presence(chat.ChatID, state.UserID)
 		if errors.Is(err, discordgo.ErrStateNotFound) {
 			continue // user likely offline or some shit
 		}
@@ -169,7 +197,7 @@ func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 			logrus.
 				WithError(err).
 				WithField("username", member.User.Username).
-				WithField("userid", member.User.ID).
+				WithField("userid", state.UserID).
 				Warnln("failed to get presence")
 			continue
 		}
@@ -178,23 +206,6 @@ func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 		// we don't get presence info when they're offline so what the fuck?
 		if presence.Status == discordgo.StatusOffline ||
 			presence.Status == discordgo.StatusInvisible {
-			continue
-		}
-
-		state, err := chat.Session.State.VoiceState(chat.ChatID, member.User.ID)
-		if errors.Is(err, discordgo.ErrStateNotFound) {
-			continue // user likely offline or some shit
-		}
-		if err != nil {
-			logrus.
-				WithError(err).
-				WithField("username", member.User.Username).
-				WithField("userid", member.User.ID).
-				Warnln("failed to get presence")
-			continue
-		}
-
-		if state.ChannelID != chat.Connection.ChannelID {
 			continue
 		}
 
@@ -217,7 +228,7 @@ func (vc *Voice) JoinVoice(guild string, channel string) error {
 	}
 
 	// set up to handle recieving communication in 2 second bursts of voice
-	vc.Receiver = voice.NewReceiver(time.Second*2, vc.onSpeakingStop)
+	vc.Receiver = voice.NewReceiver(time.Second, vc.onSpeakingStop)
 
 	// connect & setup systems
 	conn, err := vc.Session.ChannelVoiceJoin(guild, channel, false, false)
@@ -256,7 +267,7 @@ func (vc *Voice) listener() {
 		}
 
 		// push packet into receiver
-		logrus.WithField("timestamp", packet.Timestamp).Info("recieved")
+		// logrus.WithField("timestamp", packet.Timestamp).Info("recieved")
 		vc.Receiver.Push(user, packet)
 
 	}
@@ -297,15 +308,17 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 
 	// transcribe
+	start := time.Now()
 	text, err := vc.Brain.SpeechToText(vc.Ctx, waveFile)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed whisper transcription")
 		return
 	}
 
-	logrus.
-		WithField("text", text).
-		Debug("transcribed")
+	/*
+		logrus.
+			WithField("text", text).
+			Debug("transcribed")*/
 
 	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
 	if err != nil {
@@ -315,45 +328,68 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	logrus.
 		WithField("text", text).
 		WithField("sender", member.User.Username).
+		WithField("latency", time.Since(start)).
 		Debug("transcribed voice message")
 
 	vc.OnMessage(member.User, text)
 	return
 
-	// this will play back all the packets
-	// maintaining the natural delay between them
-	logrus.
-		WithField("count", len(packets)).
-		Infoln("trying to speak!")
+	/*
+		// this will play back all the packets
+		// maintaining the natural delay between them
+		logrus.
+			WithField("count", len(packets)).
+			Infoln("trying to speak!")
 
-	vc.Connection.Speaking(true)
-	for i := 0; i < len(packets); i++ {
-		packetToSend := packets[i]
-		vc.Connection.OpusSend <- packetToSend.Opus
-		// delay until the next packet
-		if i != (len(packets) - 1) {
-			nextPacket := packets[i+1]
-			delay := nextPacket.Timestamp - packetToSend.Timestamp
-			time.Sleep(time.Duration(delay) * time.Nanosecond)
+		vc.Connection.Speaking(true)
+		for i := 0; i < len(packets); i++ {
+			packetToSend := packets[i]
+			vc.Connection.OpusSend <- packetToSend.Opus
+			// delay until the next packet
+			if i != (len(packets) - 1) {
+				nextPacket := packets[i+1]
+				delay := nextPacket.Timestamp - packetToSend.Timestamp
+				time.Sleep(time.Duration(delay) * time.Nanosecond)
+			}
 		}
-	}
-	vc.Connection.Speaking(false)
+		vc.Connection.Speaking(false)
+
+	*/
 
 	logrus.Infoln("done speaking")
 
 }
 
-// generate an AUDIO file with speech
-func (vc *Voice) genSpeech(content string) (string, error) {
+// generate AUDIO files with speech in sequence
+func (vc *Voice) genSpeech(content string) ([]string, error) {
 
-	// generate TTS
-	speech := htgotts.Speech{Folder: "assets/audio", Language: "en"}
-	path, err := speech.CreateSpeechFile(content, hashString(content))
-	if err != nil {
-		return "", err
+	lines := strings.Split(content, "\n")
+	files := []string{}
+	for idx, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue // skip blank lines!
+		}
+		// generate TTS for the line
+		// TODO: find a better TTS API
+		speech := htgotts.Speech{Folder: "assets/audio", Language: "en"}
+		path, err := speech.CreateSpeechFile(line, hashString(line))
+		if err != nil {
+			return nil, err
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		if info.Size() == 1685 {
+			logrus.WithField("line", line).WithField("idx", idx).Infoln("htgotts returned bad MP3file")
+			return nil, errors.New("failed to gen speech - line too long")
+		}
+
+		files = append(files, path)
 	}
 
-	return path, err
+	return files, nil
 }
 
 // play an AUDIO file in the current voice chat

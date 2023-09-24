@@ -25,8 +25,9 @@ const (
 type AIBrain struct {
 	OpenAI *openai.Client
 
-	HistorySize int
-	Character   string
+	HistorySize         int
+	Character           string
+	TranscriptionPrompt string
 }
 
 func (brain *AIBrain) SpeechToText(
@@ -36,6 +37,7 @@ func (brain *AIBrain) SpeechToText(
 	resp, err := brain.OpenAI.CreateTranscription(ctx, openai.AudioRequest{
 		Model:    openai.Whisper1,
 		FilePath: wavFile,
+		Prompt:   brain.TranscriptionPrompt,
 	})
 	if err != nil {
 		return "", err
