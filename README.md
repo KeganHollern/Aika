@@ -22,6 +22,7 @@ ChatGPT powered waifu.
 - Can @ chat members
 - Youtube Search
 - Youtube Video Download
+- **Voice** chat integration
 
 ## Developer Notes
 
@@ -31,6 +32,7 @@ ChatGPT powered waifu.
 - Guild and DM specific GPT version control
 - Guild and DM specific function control
 - Youtube 'downloads' go to S3 storage
+- Captured voice clips are saved on disk
 
 ## Run
 
