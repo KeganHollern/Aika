@@ -400,6 +400,11 @@ func (vc *Voice) play(file string) error {
 	// rewrite this from scratch
 	// so its not doggers
 	stop := make(chan bool)
+	dgvoice.OnError = func(str string, err error) {
+		if err != nil {
+			logrus.WithError(err).Errorln(str)
+		}
+	}
 	dgvoice.PlayAudioFile(vc.Connection, file, stop)
 	close(stop)
 
@@ -432,7 +437,7 @@ func (vc *Voice) GetFunction_LeaveChannel() discordai.Function {
 
 var definition_leaveChannel = openai.FunctionDefinition{
 	Name:        "leaveVoiceChat",
-	Description: "Disconnect from the voice chat channel.",
+	Description: "Disconnect from the voice chat.",
 
 	Parameters: jsonschema.Definition{
 		Type:       jsonschema.Object,
@@ -442,7 +447,7 @@ var definition_leaveChannel = openai.FunctionDefinition{
 }
 var definition_joinChannel = openai.FunctionDefinition{
 	Name:        "joinVoiceChat",
-	Description: "Connect to the provide voice chat channel.",
+	Description: "Connect to the sender's voice chat.",
 
 	Parameters: jsonschema.Definition{
 		Type:       jsonschema.Object,
