@@ -186,8 +186,13 @@ func (c *Chat) getAvailableFunctions(
 
 	//-- add functions to tell aika to leave/join voice chat
 	if c.voice != nil {
-		functions = append(functions, c.voice.GetFunction_JoinChannel())
-		functions = append(functions, c.voice.GetFunction_LeaveChannel())
+		// admin OR subscriber
+		// chatID is always guildID when voice is non nil
+		// this is implicit and retarded but o wel
+		if c.isAdmin(user.ID) || c.isSubscriber(c.ChatID) {
+			functions = append(functions, c.voice.GetFunction_JoinChannel())
+			functions = append(functions, c.voice.GetFunction_LeaveChannel())
+		}
 	}
 
 	//TODO: add more functions to this
