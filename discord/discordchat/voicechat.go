@@ -276,8 +276,6 @@ func (vc *Voice) listener() {
 
 // this function will ensure we can convert SSRC ids to discord user IDs
 func (vc *Voice) speakingHandler(_ *discordgo.VoiceConnection, vs *discordgo.VoiceSpeakingUpdate) {
-	// vc.UserSsrc[vs.UserID] = uint32(vs.SSRC)
-	logrus.WithField("update", vs).Debugln("update to speaker!")
 	vc.SsrcUsers[uint32(vs.SSRC)] = vs.UserID
 }
 
@@ -402,9 +400,6 @@ func (vc *Voice) play(file string) error {
 	// rewrite this from scratch
 	// so its not doggers
 	stop := make(chan bool)
-	dgvoice.OnError = func(str string, err error) {
-		logrus.WithError(err).Errorln(str)
-	}
 	dgvoice.PlayAudioFile(vc.Connection, file, stop)
 	close(stop)
 
