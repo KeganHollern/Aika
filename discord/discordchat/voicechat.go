@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -339,6 +340,10 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		logrus.WithError(err).Errorln("failed whisper transcription")
 		return
 	}
+
+	// clean wave file from disk so i don't leak
+	os.Remove(waveFile)
+
 	stt_latency := time.Since(stt_start)
 
 	// maybe ?
