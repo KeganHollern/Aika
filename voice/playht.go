@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 )
@@ -15,11 +16,11 @@ import (
 // Lucas voice example
 // s3://voice-cloning-zero-shot/993f93ee-27f8-42a9-9415-2f316e7a5a5f/luc/manifest.json
 
-type TTSRequest struct {
+type ttsRequest struct {
 	Text  string `json:"text"`
 	Voice string `json:"voice"`
 }
-type TTSResponse struct {
+type ttsResponse struct {
 	ID      string    `json:"id"`
 	Created time.Time `json:"created"`
 	Input   struct {
@@ -51,8 +52,27 @@ type PlayHT struct {
 	Secret string
 }
 
-func (player PlayHT) TTS(request TTSRequest) (TTSResponse, error) {
-	var response TTSResponse
+func (player *PlayHT) TextToSpeech(text string, outdir string) (string, error) {
+	response, err := player.tts(ttsRequest{
+		Voice: "s3://voice-cloning-zero-shot/993f93ee-27f8-42a9-9415-2f316e7a5a5f/luc/manifest.json",
+		Text:  text,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	err = downloadmp3(response.Output.URL, outdir, hashString(text)+".mp3")
+	if err != nil {
+		return "", err
+	}
+
+	path := path.Join(outdir, hashString(text)+".mp3")
+	return path, nil
+}
+
+// really shitty implementation
+func (player *PlayHT) tts(request ttsRequest) (ttsResponse, error) {
+	var response ttsResponse
 	url := "https://play.ht/api/v2/tts"
 
 	payload, err := json.Marshal(request)
@@ -97,8 +117,8 @@ func (player PlayHT) TTS(request TTSRequest) (TTSResponse, error) {
 	return response, nil
 }
 
-func (player PlayHT) pollJob(id string) (TTSResponse, error) {
-	var response TTSResponse
+func (player *PlayHT) pollJob(id string) (ttsResponse, error) {
+	var response ttsResponse
 	url := "https://play.ht/api/v2/tts/" + id
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -130,7 +150,7 @@ func (player PlayHT) pollJob(id string) (TTSResponse, error) {
 }
 
 // DownloadMP3 downloads an MP3 from the provided URL and saves it to the specified directory with the given fileName.
-func DownloadMP3(url, directory, fileName string) error {
+func downloadmp3(url, directory, fileName string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err

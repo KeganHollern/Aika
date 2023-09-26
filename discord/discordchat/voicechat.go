@@ -1,22 +1,20 @@
 package discordchat
 
 import (
+	"aika/ai"
 	"aika/discord/discordai"
 	"aika/voice"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
-	htgotts "github.com/hegedustibor/htgo-tts"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -34,6 +32,7 @@ type Voice struct {
 	SsrcUsers  map[uint32]string
 
 	Receiver *voice.Receiver
+	Speaker  voice.TTS
 }
 
 func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
@@ -82,7 +81,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 		history,
 		message,
 		funcs,
-		chat.getLanguageModel(speaker.ID, chat.ChatID),
+		ai.LanguageModel_GPT35, // voice needs to be fast
 		chat.getInternalArgs(chat.Session, speaker, chat.ChatID, chat.Connection.ChannelID),
 	)
 	if err != nil {
@@ -330,7 +329,6 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		Debug("transcribed voice message")
 
 	vc.OnMessage(member.User, text)
-	return
 
 	/*
 		// this will play back all the packets
@@ -352,58 +350,54 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		}
 		vc.Connection.Speaking(false)
 
+		logrus.Infoln("done speaking")
 	*/
-
-	logrus.Infoln("done speaking")
 
 }
 
 // generate AUDIO files with speech in sequence
 func (vc *Voice) genSpeech(content string) ([]string, error) {
-
+	// break content into spoken lines
 	lines := strings.Split(content, "\n")
-	files := []string{}
-	for idx, line := range lines {
+	text_lines := []string{}
+	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue // skip blank lines!
 		}
-
-		// generate TTS for the line
-		// TODO: find a better TTS API
-
-		/*
-			response, err := voice.PlayHT{
-				User:   "<snip>",
-				Secret: "<snip>",
-			}.TTS(voice.TTSRequest{
-				Voice: "s3://voice-cloning-zero-shot/993f93ee-27f8-42a9-9415-2f316e7a5a5f/luc/manifest.json",
-				Text:  line,
-			})
-			if err != nil {
-				return nil, err
-			}
-			voice.DownloadMP3(response.Output.URL, "assets/audio", hashString(line)+".mp3")
-			path := "assets/audio/" + hashString(line) + ".mp3"
-		*/
-
-		speech := htgotts.Speech{Folder: "assets/audio", Language: "en"}
-		path, err := speech.CreateSpeechFile(line, hashString(line))
-		if err != nil {
-			return nil, err
-		}
-
-		info, err := os.Stat(path)
-		if err != nil {
-			return nil, err
-		}
-		if info.Size() == 1685 {
-			logrus.WithField("line", line).WithField("idx", idx).Infoln("htgotts returned bad MP3file")
-			return nil, errors.New("failed to gen speech - line too long")
-		}
-
-		files = append(files, path)
+		text_lines = append(text_lines, strings.TrimSpace(line))
 	}
 
+	// download in parallel on 2 threads
+	// https://help.elevenlabs.io/hc/en-us/articles/14312733311761-How-many-requests-can-I-make-and-can-I-increase-it-
+	// I can only download 2 in parallel at free teir
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	// populate files with spoken line audio files
+	// in ORDER
+	files := make([]string, len(text_lines))
+	for idx, line := range text_lines {
+		// gen tts
+		text := line
+		entry := idx
+		group.Go(func() error {
+			path, err := vc.Speaker.TextToSpeech(text, "assets/audio")
+			if err != nil {
+				return fmt.Errorf("failed tts gen; %w", err)
+			}
+
+			// safely push path to files list
+			files[entry] = path
+			return nil
+		})
+	}
+	// wait for all files to be downloaded
+	err := group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	// return spoken files in order of lines
 	return files, nil
 }
 
@@ -426,13 +420,6 @@ func (vc *Voice) play(file string) error {
 	close(stop)
 
 	return nil
-}
-
-// hashString takes an input string and returns its SHA-256 hash.
-func hashString(input string) string {
-	hash := sha256.New()
-	hash.Write([]byte(input))
-	return hex.EncodeToString(hash.Sum(nil))
 }
 
 // ------------- FUNCTIONS for AI to call which can call CONNECT and DISCONNECT

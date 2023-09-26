@@ -9,8 +9,10 @@ import (
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/storage"
+	"aika/voice"
 	"context"
 	"errors"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -214,6 +216,13 @@ func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
 		History:    make([]openai.ChatCompletionMessage, 0),
 		SsrcUsers:  make(map[uint32]string),
 		Connection: nil,
-		Session:    s, // ????
+		Session:    s, // ???? TODO can we get rid of this?
+
+		Speaker: &voice.ElevenLabs{
+			ApiKey: os.Getenv("ELEVENLABS_APIKEY"),
+		},
+
+		// google free-to-use TTS
+		// Speaker: &voice.Google{},
 	}
 }

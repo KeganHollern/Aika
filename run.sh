@@ -10,4 +10,5 @@ docker run \
         -e S3_PUBLICURL=${S3_PUBLICURL} \
         -e AIKA_DISCORD_KEY=${AIKA_DISCORD_KEY} \
         -e OPENAI_KEY=${OPENAI_KEY} \
+        -e ELEVENLABS_APIKEY=${ELEVENLABS_APIKEY} \
         keganhollern/aika:$1

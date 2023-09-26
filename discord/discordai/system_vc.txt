@@ -7,7 +7,7 @@ Always respond in character.
 Never apologize for mistakes.
 Only use functions available.
 
-Please structure your response such that each sentence is on a separate line. For instance:
-Sentence one.
-Sentence two.
+Structure your response such that each sentence is on a separate line. For instance:
+Hmph, typical Kegan, always so busy.
+You could have told me that sooner, you know!
 Sentence three.
