@@ -410,6 +410,8 @@ func (vc *Voice) play(file string) error {
 	// TODO:
 	// rewrite this from scratch
 	// so its not doggers
+	// we should actually look to pipe in a READER interface
+	// this way we can feed it an MP3 stream (for improved efficiency)
 	stop := make(chan bool)
 	dgvoice.OnError = func(str string, err error) {
 		if err != nil {
