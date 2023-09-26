@@ -7,6 +7,7 @@ import (
 	"aika/voice/transcoding"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -125,13 +126,14 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 		return
 	}
 
-	/* // WIP
+	// WIP
 	err = chat.streamSpeech(response)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed to stream tts")
 		return
 	}
-	*/
+
+	return
 
 	// convert response message to audio files
 	files, err := chat.genSpeech(response)
@@ -289,6 +291,7 @@ func (vc *Voice) speakingHandler(_ *discordgo.VoiceConnection, vs *discordgo.Voi
 // called when the speaker has finished speaking (delay configured in receiver init)
 // recieves all packets and the speaker
 func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
+	full_start := time.Now()
 
 	duration, err := transcoding.GetDiscordDuration(packets)
 	if err != nil {
@@ -314,8 +317,16 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 	defer vc.Mutex.Unlock()
 
-	full_start := time.Now()
+	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to get member")
+	}
 
+	//
+	// Speech to text
+	//
+
+	stt_start := time.Now()
 	// encode voice snippet to wave file
 	waveFile, err := transcoding.DiscordToFile(packets, "assets/audio")
 	if err != nil {
@@ -323,11 +334,6 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
-	// TODO: filter dogshit wave files out
-	// ?!
-
-	// transcribe
-	stt_start := time.Now()
 	text, err := vc.Brain.SpeechToText(vc.Ctx, waveFile)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed whisper transcription")
@@ -335,17 +341,20 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 	stt_latency := time.Since(stt_start)
 
-	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
-	if err != nil {
-		logrus.WithError(err).Errorln("failed to get member")
-	}
+	//
+	// Text Generation
+	//
 
-	// text->text via ChatBot
+	// TODO: split this out for more accurate metrics
+
+	//
+	// Text To Speech
+	//
 	chat_start := time.Now()
 	vc.OnMessage(member.User, text)
 
 	logrus.
-		WithField("clip", duration).
+		WithField("clip", duration.String()).
 		WithField("text", text).
 		WithField("sender", member.User.Username).
 		WithField("latency_stt", stt_latency.String()).
@@ -356,8 +365,33 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 
 // stream the content to voice via TTS
 func (vc *Voice) streamSpeech(content string) error {
-	//TODO:
-	return nil
+	pr, pw := io.Pipe()
+
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	// routine for streaming MP3 content down
+	group.Go(func() error {
+		defer pw.Close() // close the writer here so the transcoder knows when it's done
+
+		err := vc.Speaker.TextToSpeechStream(content, pw)
+		if err != nil {
+			return fmt.Errorf("failed to stream tts; %w", err)
+		}
+
+		return nil
+	})
+	// routine for transcoding MP3 to discord send
+	group.Go(func() error {
+		err := transcoding.StreamMP3ToOpus(pr, vc.Connection.OpusSend)
+		if err != nil {
+			return fmt.Errorf("failed to transcode mp3 stream; %w", err)
+		}
+
+		return nil
+	})
+
+	return group.Wait()
 }
 
 // generate AUDIO files with speech in sequence

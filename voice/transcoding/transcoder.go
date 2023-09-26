@@ -18,6 +18,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
+	"golang.org/x/sync/errgroup"
 	"layeh.com/gopus"
 )
 
@@ -86,9 +87,10 @@ func opusToPCM(opus [][]byte) ([][]int16, error) {
 // read mp3 file to PCM buffer
 func mp3ToPCM(filename string) ([][]int16, error) {
 	run := exec.Command("ffmpeg", "-i", filename, "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+
 	ffmpegout, err := run.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("ffmpeg error; %w", err)
+		return nil, fmt.Errorf("StdoutPipe error: %w", err)
 	}
 
 	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
@@ -168,6 +170,93 @@ func MP3ToOpus(filename string) ([][]byte, error) {
 	}
 
 	return opus, nil
+}
+
+func streamMP3ToPCM(reader io.Reader, pcmChan chan []int16) error {
+	// Create a shell command "object" to run.
+	// We set up ffmpeg to read from its stdin (the provided PipeReader) by passing "-" as the input file.
+	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+	run.Stdin = reader
+
+	ffmpegout, err := run.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("StdoutPipe error: %w", err)
+	}
+
+	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
+
+	err = run.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start ffmpeg; %w", err)
+	}
+
+	defer run.Process.Kill()
+
+	for {
+		// Read data from ffmpeg stdout
+		audiobuf := make([]int16, frameSize*channels)
+		err := binary.Read(ffmpegbuf, binary.LittleEndian, &audiobuf)
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("Error reading from ffmpeg stdout: %w", err)
+		}
+
+		// Send received PCM to the provided channel
+		pcmChan <- audiobuf
+	}
+
+	return nil
+}
+
+// uses the encoder to encode pcm data from the pcm chan and write opus frames on the opus channel
+func streamPCMToOpus(encoder *gopus.Encoder, pcmChan chan []int16, opusChan chan []byte) error {
+	for pcm := range pcmChan {
+		opus, err := encoder.Encode(pcm, frameSize, maxBytes)
+		if err != nil {
+			return fmt.Errorf("failed to encode opus frame; %w", err)
+		}
+		opusChan <- opus
+	}
+	return nil
+}
+
+// blocking function to read MP3 data from the io.Reader and
+// return opus frames on the opus channel
+func StreamMP3ToOpus(reader io.Reader, opusChan chan []byte) error {
+	pcmChan := make(chan []int16)
+
+	// PCM->Opus encoder
+	encoder, err := gopus.NewEncoder(frameRate, channels, gopus.Audio)
+	if err != nil {
+		return fmt.Errorf("failed to construct encoder; %w", err)
+	}
+
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	// decode mp3 to pcm
+	group.Go(func() error {
+		defer close(pcmChan) // we close the PCM channel here to signify MP3 streaming is done
+
+		err := streamMP3ToPCM(reader, pcmChan)
+		if err != nil {
+			return fmt.Errorf("error decoding mp3; %w", err)
+		}
+		return nil
+	})
+
+	// encode pcm to opus
+	group.Go(func() error {
+		err := streamPCMToOpus(encoder, pcmChan, opusChan)
+		if err != nil {
+			return fmt.Errorf("error encoding to opus; %w", err)
+		}
+		return nil
+	})
+
+	return group.Wait()
 }
 
 //TODO: possible to stream PCM data to a transcription service / interface ?
