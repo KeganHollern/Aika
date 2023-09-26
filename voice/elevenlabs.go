@@ -2,9 +2,8 @@ package voice
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"time"
@@ -31,40 +30,11 @@ func (api *ElevenLabs) TextToSpeech(text string, outdir string) (string, error) 
 
 	// not spoken - gen voice lines
 	client := elevenlabs.NewClient(context.Background(), api.ApiKey, 30*time.Second)
-
-	/*
-		models, err := client.GetModels()
-		if err != nil {
-			return "", fmt.Errorf("could not get models; %w", err)
-		}
-	*/
-
-	/*
-		voices, err := client.GetVoices()
-		if err != nil {
-			return "", fmt.Errorf("could not get voices; %w", err)
-		}
-		fmt.Println(voices[0])
-	*/
-
 	ttsReq := elevenlabs.TextToSpeechRequest{
 		Text:    text,
 		ModelID: "eleven_monolingual_v1",
-		/*
-			VoiceSettings: &elevenlabs.VoiceSettings{
-				Stability:       .35,
-				SimilarityBoost: .4,
-			},*/
 	}
-	// todo: stream response directly to voice chat ?
-	// elevenlabs.TextToSpeechStream()
-
-	// MF3mGyEYCl7XYWbV9V6O -- Elli
-	// HoS8AiGDOzZCrk4VTbQl -- Valley Girl
-	// BreKkXSwy4hr1vgm7ZqX -- Janiah (also good)
-	// cfB6lViBdEjgGRi26uBV -- Sexy Female (like)
-	// heILIY4H8yX0oMI0iwte -- Sally realistic
-	// kOFQK5H1ZWrZR03j1rvh -- Shelby
+	// BreKkXSwy4hr1vgm7ZqX -- Janiah
 	audio, err := client.TextToSpeech("BreKkXSwy4hr1vgm7ZqX", ttsReq)
 	if err != nil {
 		return "", fmt.Errorf("failed tts; %w", err)
@@ -77,8 +47,11 @@ func (api *ElevenLabs) TextToSpeech(text string, outdir string) (string, error) 
 	return file, nil
 }
 
-func hashString(input string) string {
-	hash := sha256.New()
-	hash.Write([]byte(input))
-	return hex.EncodeToString(hash.Sum(nil))
+func (api *ElevenLabs) TextToSpeechStream(text string, writer io.Writer) error {
+	client := elevenlabs.NewClient(context.Background(), api.ApiKey, 30*time.Second)
+	ttsReq := elevenlabs.TextToSpeechRequest{
+		Text:    text,
+		ModelID: "eleven_monolingual_v1",
+	}
+	return client.TextToSpeechStream(writer, "BreKkXSwy4hr1vgm7ZqX", ttsReq)
 }

@@ -4,12 +4,12 @@ import (
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/voice"
+	"aika/voice/transcoding"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
@@ -298,7 +298,7 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	defer vc.Mutex.Unlock()
 
 	// encode voice snippet to wave file
-	waveFile, err := voice.EncodeAudio(packets)
+	waveFile, err := transcoding.DiscordToFile(packets, "assets/audio")
 	if err != nil {
 		logrus.WithError(err).Errorln("failed to encode audio message")
 		return
@@ -407,20 +407,36 @@ func (vc *Voice) play(file string) error {
 		return ErrNotConnected
 	}
 
-	// TODO:
-	// rewrite this from scratch
-	// so its not doggers
-	// we should actually look to pipe in a READER interface
-	// this way we can feed it an MP3 stream (for improved efficiency)
-	stop := make(chan bool)
-	dgvoice.OnError = func(str string, err error) {
-		if err != nil {
-			logrus.WithError(err).Errorln(str)
-		}
+	// convert Mp3 file to Opus frames
+	opus, err := transcoding.MP3ToOpus(file)
+	if err != nil {
+		return err
 	}
-	dgvoice.PlayAudioFile(vc.Connection, file, stop)
-	close(stop)
 
+	// send frames
+	vc.Connection.Speaking(true)
+	for _, packet := range opus {
+		vc.Connection.OpusSend <- packet
+		// sleep sampleRate ?
+	}
+	vc.Connection.Speaking(false)
+
+	/*
+		// TODO:
+		// rewrite this from scratch
+		// so its not doggers
+		// we should actually look to pipe in a READER interface
+		// this way we can feed it an MP3 stream (for improved efficiency)
+		stop := make(chan bool)
+		dgvoice.OnError = func(str string, err error) {
+			if err != nil {
+				logrus.WithError(err).Errorln(str)
+			}
+		}
+		dgvoice.PlayAudioFile(vc.Connection, file, stop)
+		close(stop)
+
+	*/
 	return nil
 }
 
