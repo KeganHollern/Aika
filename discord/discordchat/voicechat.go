@@ -341,6 +341,14 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 	stt_latency := time.Since(stt_start)
 
+	// maybe ?
+	/*
+		if !strings.Contains(strings.ToLower(text), "aika") {
+			logrus.WithField("text", text).Debugln("dropped message not mentioning aika")
+			return
+		}
+	*/
+
 	//
 	// Text Generation
 	//
