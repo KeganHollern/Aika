@@ -115,7 +115,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).
 		WithField("response", res.Content).
-		WithField("latency", time.Since(start)).
+		WithField("latency", time.Since(start).String()).
 		Infoln("voice chat log")
 
 	response := chat.replaceMarkdownLinks(res.Content)
@@ -124,6 +124,14 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 	if chat.Connection == nil {
 		return
 	}
+
+	/* // WIP
+	err = chat.streamSpeech(response)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to stream tts")
+		return
+	}
+	*/
 
 	// convert response message to audio files
 	files, err := chat.genSpeech(response)
@@ -281,11 +289,20 @@ func (vc *Voice) speakingHandler(_ *discordgo.VoiceConnection, vs *discordgo.Voi
 // called when the speaker has finished speaking (delay configured in receiver init)
 // recieves all packets and the speaker
 func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
-	// if speakerID != "241370201222938626" {
-	//	 return // only kegan
-	// }
 
-	// lock here rather than OnMessage()
+	duration, err := transcoding.GetDiscordDuration(packets)
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to decode speaking duration")
+		return
+	}
+
+	// drop audio clips too short to process
+	if duration < (time.Millisecond * 500) {
+		logrus.WithField("duration", duration.String()).Debugln("audio clip too short")
+		return
+	}
+
+	// lock here since aika is processing an existing message
 	locked := vc.Mutex.TryLock()
 	if !locked {
 		// she's processing some other spoken message
@@ -297,6 +314,8 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 	defer vc.Mutex.Unlock()
 
+	full_start := time.Now()
+
 	// encode voice snippet to wave file
 	waveFile, err := transcoding.DiscordToFile(packets, "assets/audio")
 	if err != nil {
@@ -304,55 +323,41 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
+	// TODO: filter dogshit wave files out
+	// ?!
+
 	// transcribe
-	start := time.Now()
+	stt_start := time.Now()
 	text, err := vc.Brain.SpeechToText(vc.Ctx, waveFile)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed whisper transcription")
 		return
 	}
-
-	/*
-		logrus.
-			WithField("text", text).
-			Debug("transcribed")*/
+	stt_latency := time.Since(stt_start)
 
 	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed to get member")
 	}
 
-	logrus.
-		WithField("text", text).
-		WithField("sender", member.User.Username).
-		WithField("latency", time.Since(start)).
-		Debug("transcribed voice message")
-
+	// text->text via ChatBot
+	chat_start := time.Now()
 	vc.OnMessage(member.User, text)
 
-	/*
-		// this will play back all the packets
-		// maintaining the natural delay between them
-		logrus.
-			WithField("count", len(packets)).
-			Infoln("trying to speak!")
+	logrus.
+		WithField("clip", duration).
+		WithField("text", text).
+		WithField("sender", member.User.Username).
+		WithField("latency_stt", stt_latency.String()).
+		WithField("latency_tts", time.Since(chat_start).String()).
+		WithField("latency_full", time.Since(full_start).String()).
+		Debug("audio chat handling done")
+}
 
-		vc.Connection.Speaking(true)
-		for i := 0; i < len(packets); i++ {
-			packetToSend := packets[i]
-			vc.Connection.OpusSend <- packetToSend.Opus
-			// delay until the next packet
-			if i != (len(packets) - 1) {
-				nextPacket := packets[i+1]
-				delay := nextPacket.Timestamp - packetToSend.Timestamp
-				time.Sleep(time.Duration(delay) * time.Nanosecond)
-			}
-		}
-		vc.Connection.Speaking(false)
-
-		logrus.Infoln("done speaking")
-	*/
-
+// stream the content to voice via TTS
+func (vc *Voice) streamSpeech(content string) error {
+	//TODO:
+	return nil
 }
 
 // generate AUDIO files with speech in sequence

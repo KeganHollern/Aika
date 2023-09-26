@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-audio/audio"
@@ -26,6 +27,30 @@ const (
 	frameSize int = 960                 // uint16 size of each audio frame
 	maxBytes  int = (frameSize * 2) * 2 // max size of opus data
 )
+
+func GetDiscordDuration(packets []*discordgo.Packet) (time.Duration, error) {
+	opus, err := discordToOpus(packets)
+	if err != nil {
+		return 0, fmt.Errorf("failed to exrtract opus frames; %w", err)
+	}
+
+	pcmData, err := opusToPCM(opus)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode opus frames; %w", err)
+	}
+
+	return pcmDuration(pcmData), nil
+
+}
+func pcmDuration(pcmData [][]int16) time.Duration {
+	totalSamples := 0
+	for _, pcm := range pcmData {
+		totalSamples += len(pcm)
+	}
+
+	seconds := float64(totalSamples) / (float64(frameRate) * float64(channels))
+	return time.Duration(seconds * float64(time.Second))
+}
 
 // convert Discord packets to raw Opus frames
 func discordToOpus(packets []*discordgo.Packet) ([][]byte, error) {
