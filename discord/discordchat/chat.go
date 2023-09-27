@@ -9,6 +9,7 @@ import (
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/storage"
+	"aika/voice"
 	"context"
 	"errors"
 	"regexp"
@@ -223,6 +224,6 @@ func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
 		*/
 
 		// google free-to-use TTS
-		// Speaker: &voice.Google{},
+		Speaker: &voice.Google{},
 	}
 }

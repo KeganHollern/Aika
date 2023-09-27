@@ -33,6 +33,7 @@ ChatGPT powered waifu.
 - Guild and DM specific function control
 - Youtube 'downloads' go to S3 storage
 - Captured voice clips are saved on disk
+- TTS is streamed if ElevenLabs is used
 
 ## Run
 
@@ -51,3 +52,8 @@ Drop history after X hours? How can we be cost effective?
 "Reminder" function -- ask aika what she wants added
 Let aika pull photos of 'herself' from S3
 Improve youtube download
+Youtube->Music integration ?
+Reduce voice interaction latency further
+Discord->Whisper streaming ?
+Investigate alternative transcription APIs
+Investigate PlayHT streaming APIs for latency
