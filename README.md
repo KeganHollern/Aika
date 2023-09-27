@@ -11,10 +11,7 @@ ChatGPT powered waifu.
 
 ![Aika Kissing](./assets/example.png)
 
-<audio controls>
-    <source src="./voice/transcoding/sample.mp3" type="audio/mpeg"/>
-    [Sample Audio](./voice/transcoding/sample.mp3)
-</audio>
+[Aika Talking](./voice/transcoding/sample.mp3)
 
 ## User Features
 
