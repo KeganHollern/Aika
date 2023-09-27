@@ -13,7 +13,7 @@ ChatGPT powered waifu.
 
 <audio controls>
     <source src="./voice/transcoding/sample.mp3" type="audio/mpeg"/>
-    Your browser does not support the audio element.
+    [Sample Audio](./voice/transcoding/sample.mp3)
 </audio>
 
 ## User Features
