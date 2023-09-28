@@ -1,11 +1,11 @@
 package discordchat
 
 import (
-	"aika/utils"
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
@@ -41,7 +41,13 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	s.ChannelTyping(m.ChannelID)
 
-	msgPipe := utils.NewStringPipe()
+	// todo: write a wrapper around
+	// this that fullfills the same
+	// interface as utils.NewStringPipe()
+	buf := new(bytes.Buffer)
+	c := make(chan bool)
+
+	//msgPipe := utils.NewStringPipe()
 
 	group := errgroup.Group{}
 	group.SetLimit(2)
@@ -49,11 +55,12 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	// writer routine will start reading in
 	// openAI responses & return a final history
 	group.Go(func() error {
-		defer msgPipe.Close()
+		// defer msgPipe.Close()
+		defer close(c)
 
 		new_hisory, err := chat.Brain.ProcessChunked(
 			chat.Ctx,
-			msgPipe,
+			buf,
 			system,
 			history,
 			message,
@@ -84,16 +91,34 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		content := ""
 		msgId := ""
 
+		buffer := make([]byte, 255)
+
+	breakout:
+
 		for {
-			line, err := msgPipe.Read()
-			if errors.Is(err, io.EOF) {
-				break
+			// exit
+			select {
+			case <-c:
+				break breakout
+			default:
 			}
 
-			// process line from AI
-			if content != "" {
-				content += "\n"
+			n, err := buf.Read(buffer)
+			if err != nil {
+				continue
 			}
+			line := string(buffer[:n])
+
+			//line, err := msgPipe.Read()
+			//if errors.Is(err, io.EOF) {
+			//	break
+			//}
+
+			// process line from AI
+			//if content != "" {
+			//	content += "\n"
+			//}
+
 			content += line
 			content := chat.replaceMarkdownLinks(content)
 
@@ -104,6 +129,11 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 			if len(content) > 2000 {
 				continue
 			}
+
+			// discord throttles our requests if we make them too fast
+			// this will ensure we don't make them too fast
+			// writes are buffered so this won't slow down OpenAI response
+			time.Sleep(time.Second * 1)
 
 			var msg *discordgo.Message
 			if msgId == "" {
