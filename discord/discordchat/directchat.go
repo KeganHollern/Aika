@@ -1,11 +1,16 @@
 package discordchat
 
 import (
+	"aika/utils"
+	"errors"
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 type Direct struct {
@@ -34,46 +39,108 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		Name:    sender.GetDisplayName(),
 	}
 
-	var err error
-
 	s.ChannelTyping(m.ChannelID)
 
-	history, err = chat.Brain.Process(
-		chat.Ctx,
-		system,
-		history,
-		message,
-		chat.getAvailableFunctions(s, m.Author),
-		chat.getLanguageModel(m.Author.ID, ""),
-		chat.getInternalArgs(s, m.Author, m.GuildID, m.ChannelID),
-	)
-	if err != nil {
-		logrus.WithError(err).Errorln("failed while processing in brain")
-		s.ChannelMessageSend(m.ChannelID, err.Error())
-		return
-	}
-	if len(history) == 0 {
-		logrus.Errorln("blank history returned from brain.Process")
-		s.ChannelMessageSend(m.ChannelID, "my brain is empty")
-		return
+	msgPipe := utils.NewStringPipe()
+
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	// writer routine will start reading in
+	// openAI responses & return a final history
+	group.Go(func() error {
+		defer msgPipe.Close()
+
+		new_hisory, err := chat.Brain.ProcessChunked(
+			chat.Ctx,
+			msgPipe,
+			system,
+			history,
+			message,
+			chat.getAvailableFunctions(s, m.Author),
+			chat.getLanguageModel(m.Author.ID, ""),
+			chat.getInternalArgs(s, m.Author, m.GuildID, m.ChannelID),
+		)
+		if err != nil {
+			s.ChannelMessageSend(m.ChannelID, err.Error())
+			return fmt.Errorf("failed while processing in brain; %w", err)
+		}
+		if len(new_hisory) == 0 {
+			s.ChannelMessageSend(m.ChannelID, "my brain is empty")
+			return errors.New("blank history returned from brain.Process")
+		}
+
+		// update history
+		history = new_hisory
+
+		logrus.WithField("full_msg", history[len(history)-1].Content).Debugln("finished reading stream")
+		return nil
+	})
+	// reader routine will create & continuously edit
+	// the discord message with content
+	// as it's streamed in
+	group.Go(func() error {
+		// process chunks into a message
+		content := ""
+		msgId := ""
+
+		for {
+			line, err := msgPipe.Read()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			// process line from AI
+			if content != "" {
+				content += "\n"
+			}
+			content += line
+			content := chat.replaceMarkdownLinks(content)
+
+			// if content is too large we can't
+			// put it in a single message
+			// so just keep processing chunks
+			// we'll handle it elsewhere
+			if len(content) > 2000 {
+				continue
+			}
+
+			var msg *discordgo.Message
+			if msgId == "" {
+				msg, err = s.ChannelMessageSend(m.ChannelID, content)
+				if err != nil {
+					// TODO: ??? idk
+					continue
+				}
+			} else {
+				msg, err = s.ChannelMessageEdit(m.ChannelID, msgId, content)
+				if err != nil {
+					// TODO: ??? idk
+					continue
+				}
+			}
+			msgId = msg.ID
+		}
+
+		// content exceeded buffer
+		// send full message as a file :)
+		if len(content) > 2000 {
+			s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(content))
+		}
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		logrus.WithError(err).Errorln("failed to send message")
 	}
 
 	chat.History = history
 
 	res := history[len(history)-1]
 
-	// TODO: improve this log
 	logrus.
 		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).
 		WithField("response", res.Content).
 		Infoln("chat log")
-
-	response := chat.replaceMarkdownLinks(res.Content)
-	if len(response) > 2000 {
-		// TODO: do we need this fixed msg ?
-		s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(response))
-	} else {
-		s.ChannelMessageSend(m.ChannelID, response)
-	}
 }
