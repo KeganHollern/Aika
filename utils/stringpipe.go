@@ -8,6 +8,7 @@ import (
 
 type StringPipe struct {
 	buffer   bytes.Buffer
+	temp     bytes.Buffer
 	dataCond *sync.Cond
 	closed   bool
 }
@@ -28,10 +29,13 @@ func (sp *StringPipe) Write(p []byte) (n int, err error) {
 		return 0, io.ErrClosedPipe
 	}
 
-	n, err = sp.buffer.Write(p)
+	// Write to a temporary buffer first
+	n, err = sp.temp.Write(p)
 
-	// Signal only when newline is encountered in the input buffer.
-	if bytes.Contains(p, []byte{'\n'}) {
+	// Check for newline in the temporary buffer
+	if bytes.Contains(sp.temp.Bytes(), []byte{'\n'}) {
+		sp.buffer.Write(sp.temp.Bytes())
+		sp.temp.Reset()
 		sp.dataCond.Signal()
 	}
 
@@ -70,6 +74,13 @@ func (sp *StringPipe) Close() error {
 
 	if sp.closed {
 		return io.ErrClosedPipe
+	}
+
+	// Append a newline to flush any remaining characters.
+	if sp.temp.Len() > 0 {
+		sp.temp.Write([]byte{'\n'})
+		sp.buffer.Write(sp.temp.Bytes())
+		sp.temp.Reset()
 	}
 
 	sp.closed = true
