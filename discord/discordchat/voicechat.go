@@ -37,7 +37,7 @@ type Voice struct {
 	Speaker  voice.TTS
 }
 
-func (chat *Voice) getResponse(speaker *discordgo.User, msg string) (string, error) {
+func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output chan string) error {
 
 	// convert sender to "chat participant"
 	sender := &ChatParticipant{User: speaker}
@@ -51,7 +51,7 @@ func (chat *Voice) getResponse(speaker *discordgo.User, msg string) (string, err
 			WithField("message", msg).
 			Errorln("failed to get chat members")
 
-		return "", fmt.Errorf("failed to get chat participants; %w", err)
+		return fmt.Errorf("failed to get chat participants; %w", err)
 	}
 
 	// convert members to Display names
@@ -93,7 +93,7 @@ func (chat *Voice) getResponse(speaker *discordgo.User, msg string) (string, err
 			WithField("message", msg).
 			Errorln("failed while processing in brain")
 
-		return "", fmt.Errorf("failed to process in brain; %w", err)
+		return fmt.Errorf("failed to process in brain; %w", err)
 	}
 
 	if len(history) == 0 {
@@ -103,7 +103,7 @@ func (chat *Voice) getResponse(speaker *discordgo.User, msg string) (string, err
 			WithField("message", msg).
 			Errorln("blank history returned from brain.Process")
 
-		return "", errors.New("no history returned from AI")
+		return errors.New("no history returned from AI")
 	}
 
 	// update history
@@ -112,9 +112,10 @@ func (chat *Voice) getResponse(speaker *discordgo.User, msg string) (string, err
 	// get response message
 	res := history[len(history)-1]
 
-	response := chat.replaceMarkdownLinks(res.Content)
+	// TODO: actual streaming
+	output <- res.Content
 
-	return response, nil
+	return nil
 }
 
 // get voice chat members by scanning the voicestates
@@ -299,6 +300,11 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 
 	stt_latency := time.Since(stt_start)
 
+	// if she cannot talk (for leaving chat) exit early
+	if vc.Connection == nil {
+		return
+	}
+
 	//
 	// Filter out messages that don't mention AIKA (expensive as fuck!)
 	//
@@ -307,29 +313,60 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
+	// TODO: stream responses to a chan string
+	//  then pipe responses into vc.streamspeech as we read sentences
+	//  when getResponses finishes close(chan string)
+	// 	when closed channel return
+
+	speakChan := make(chan string)
+
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	var ai_latency time.Duration
+	var chat_latency time.Duration
+
 	//
 	// Text Generation
 	//
-	ai_start := time.Now()
-	response, err := vc.getResponse(member.User, text)
-	if err != nil {
-		logrus.WithError(err).Errorln("failed to query ai")
-		return
-	}
-	ai_latency := time.Since(ai_start)
+	group.Go(func() error {
+		defer close(speakChan)
 
-	// if she cannot talk (for leaving chat) exit early
-	if vc.Connection == nil {
-		return
-	}
+		ai_start := time.Now()
+
+		err := vc.streamResponse(member.User, text, speakChan)
+		if err != nil {
+			return fmt.Errorf("failed to stream response; %w", err)
+		}
+
+		ai_latency = time.Since(ai_start)
+		return nil
+	})
 
 	//
 	// Text To Speech
 	//
-	chat_start := time.Now()
-	err = vc.streamSpeech(response)
+	group.Go(func() error {
+		chat_start := time.Now()
+
+		for {
+			response, ok := <-speakChan
+			if !ok {
+				break
+			}
+			err = vc.streamSpeech(response)
+			if err != nil {
+				return fmt.Errorf("failed to stream tts; %w", err)
+			}
+		}
+
+		chat_latency = time.Since(chat_start)
+		return nil
+	})
+
+	err = group.Wait()
 	if err != nil {
-		logrus.WithError(err).Errorln("failed to stream tts")
+		logrus.WithError(err).Errorln("failed to talk in chat")
 		return
 	}
 
@@ -339,7 +376,7 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		WithField("sender", member.User.Username).
 		WithField("latency_stt", stt_latency.String()).
 		WithField("latency_ai", ai_latency.String()).
-		WithField("latency_tts", time.Since(chat_start).String()).
+		WithField("latency_tts", chat_latency.String()).
 		WithField("latency_full", time.Since(full_start).String()).
 		Debug("audio chat handling done")
 }

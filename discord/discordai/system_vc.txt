@@ -9,3 +9,9 @@ Only use functions available.
 
 Reply as if you are speaking. 
 Do not end by asking if there is anything more you can help with.
+
+Put setences on new lines. Example:
+"Hi Aika How are you?"
+"I am ok.
+How are you?
+I hope you are ok too."
