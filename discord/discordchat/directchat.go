@@ -1,16 +1,17 @@
 package discordchat
 
 import (
-	"bytes"
+	"aika/utils"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 )
 
 type Direct struct {
@@ -44,8 +45,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	// todo: write a wrapper around
 	// this that fullfills the same
 	// interface as utils.NewStringPipe()
-	buf := new(bytes.Buffer)
-	c := make(chan bool)
+	pipe := utils.NewBytePipe()
 
 	//msgPipe := utils.NewStringPipe()
 
@@ -55,12 +55,11 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	// writer routine will start reading in
 	// openAI responses & return a final history
 	group.Go(func() error {
-		// defer msgPipe.Close()
-		defer close(c)
+		defer pipe.Close()
 
 		new_hisory, err := chat.Brain.ProcessChunked(
 			chat.Ctx,
-			buf,
+			pipe,
 			system,
 			history,
 			message,
@@ -93,34 +92,23 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 		buffer := make([]byte, 255)
 
-	breakout:
+		rl := rate.NewLimiter(1, 1)
 
 		for {
-			// exit
-			select {
-			case <-c:
-				break breakout
-			default:
+			n, err := pipe.Read(buffer)
+			if errors.Is(err, io.EOF) {
+				break
 			}
-
-			n, err := buf.Read(buffer)
 			if err != nil {
-				continue
+				return fmt.Errorf("failed to read pipe; %w", err)
+			}
+			if n == 0 {
+				continue // no new data
 			}
 			line := string(buffer[:n])
 
-			//line, err := msgPipe.Read()
-			//if errors.Is(err, io.EOF) {
-			//	break
-			//}
-
-			// process line from AI
-			//if content != "" {
-			//	content += "\n"
-			//}
-
 			content += line
-			content := chat.replaceMarkdownLinks(content)
+			content = chat.replaceMarkdownLinks(content)
 
 			// if content is too large we can't
 			// put it in a single message
@@ -133,19 +121,21 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 			// discord throttles our requests if we make them too fast
 			// this will ensure we don't make them too fast
 			// writes are buffered so this won't slow down OpenAI response
-			time.Sleep(time.Second * 1)
+			if !rl.Allow() {
+				continue
+			}
 
 			var msg *discordgo.Message
 			if msgId == "" {
 				msg, err = s.ChannelMessageSend(m.ChannelID, content)
 				if err != nil {
-					// TODO: ??? idk
+					logrus.WithError(err).Errorln("failed to send message")
 					continue
 				}
 			} else {
 				msg, err = s.ChannelMessageEdit(m.ChannelID, msgId, content)
 				if err != nil {
-					// TODO: ??? idk
+					logrus.WithError(err).Errorln("failed to update message")
 					continue
 				}
 			}
@@ -156,7 +146,14 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		// send full message as a file :)
 		if len(content) > 2000 {
 			s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(content))
+		} else {
+			if msgId == "" {
+				s.ChannelMessageSend(m.ChannelID, content)
+			} else {
+				s.ChannelMessageEdit(m.ChannelID, msgId, content)
+			}
 		}
+
 		return nil
 	})
 
