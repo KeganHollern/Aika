@@ -292,18 +292,6 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
-	// lock here since aika is processing an existing message
-	locked := vc.Mutex.TryLock()
-	if !locked {
-		// she's processing some other spoken message
-		logrus.
-			WithField("speaker", speakerID).
-			Warnln("missed spoken message due to processing")
-
-		return
-	}
-	defer vc.Mutex.Unlock()
-
 	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed to get member")
@@ -329,6 +317,18 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	// clean wave file from disk so i don't leak
 	os.Remove(waveFile)
 
+	// lock here since aika is processing an existing message
+	locked := vc.Mutex.TryLock()
+	if !locked {
+		// she's processing some other spoken message
+		logrus.
+			WithField("speaker", speakerID).
+			Warnln("missed spoken message due to processing")
+
+		return
+	}
+	defer vc.Mutex.Unlock()
+
 	stt_latency := time.Since(stt_start)
 
 	// if she cannot talk (for leaving chat) exit early
@@ -344,6 +344,11 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 	if strings.Contains(strings.ToLower(text), "aika, an ai chatbot.") {
+		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
+		return
+	}
+
+	if strings.Contains(strings.ToLower(text), "aika, the ai chatbot") {
 		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
 		return
 	}
@@ -392,6 +397,11 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 				break
 			}
 			full_response += response + "\n"
+
+			if vc.Connection == nil {
+				continue // can't talk but need to drain speakChan
+			}
+
 			err = vc.streamSpeech(response)
 			if err != nil {
 				return fmt.Errorf("failed to stream tts; %w", err)
