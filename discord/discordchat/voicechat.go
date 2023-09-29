@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -315,7 +316,25 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	}
 
 	// clean wave file from disk so i don't leak
-	os.Remove(waveFile)
+	defer os.Remove(waveFile)
+
+	//
+	// prep for WAVE saving
+	//
+	clip_url := "not uploaded"
+	if duration > time.Second*3 {
+		path := fmt.Sprintf("user-audio/%s/%s", speakerID, filepath.Base(waveFile))
+		clip_url = fmt.Sprintf("%s/%s", vc.S3.PublicUrl, path)
+		// this is a good clip - lets save it for later training :)
+		defer func() {
+			file, err := os.Open(waveFile)
+			if err != nil {
+				return
+			}
+			vc.S3.StreamUpload(file, path)
+			file.Close()
+		}()
+	}
 
 	// lock here since aika is processing an existing message
 	locked := vc.Mutex.TryLock()
@@ -358,6 +377,10 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		WithField("input", text).
 		WithField("sender", member.User.Username).
 		Debug("processing new message")
+
+	//
+	// save message for review
+	//
 
 	speakChan := make(chan string)
 
@@ -420,6 +443,7 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 
 	logrus.
 		WithField("clip", duration.String()).
+		WithField("url", clip_url).
 		WithField("input", text).
 		WithField("output", full_response).
 		WithField("sender", member.User.Username).
