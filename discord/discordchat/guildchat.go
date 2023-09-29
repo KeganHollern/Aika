@@ -68,7 +68,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	group.Go(func() error {
 		defer pipe.Close()
 
-		new_hisory, err := chat.Brain.ProcessChunked(
+		new_history, err := chat.Brain.ProcessChunked(
 			chat.Ctx,
 			pipe,
 			system,
@@ -82,13 +82,13 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(m.ChannelID, err.Error())
 			return fmt.Errorf("failed while processing in brain; %w", err)
 		}
-		if len(new_hisory) == 0 {
+		if len(new_history) == 0 {
 			s.ChannelMessageSend(m.ChannelID, "my brain is empty")
 			return errors.New("blank history returned from brain.Process")
 		}
 
 		// update history
-		history = new_hisory
+		history = new_history
 
 		return nil
 	})

@@ -297,7 +297,7 @@ func (brain *AIBrain) BuildVoiceSystemMessage(
 	memberNames := strings.Join(displayNames, ", ")
 
 	system := fmt.Sprintf(sysVoice, memberNames, brain.Character)
-	logrus.WithField("system", system).Debugln("voice system message")
+	// logrus.WithField("system", system).Debugln("voice system message")
 
 	return openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
