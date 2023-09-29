@@ -3,6 +3,7 @@ package discordchat
 import (
 	"aika/ai"
 	"aika/discord/discordai"
+	"aika/utils"
 	"aika/voice"
 	"aika/voice/transcoding"
 	"errors"
@@ -37,7 +38,7 @@ type Voice struct {
 	Speaker  voice.TTS
 }
 
-func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
+func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output chan string) error {
 
 	// convert sender to "chat participant"
 	sender := &ChatParticipant{User: speaker}
@@ -51,7 +52,7 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 			WithField("message", msg).
 			Errorln("failed to get chat members")
 
-		return
+		return fmt.Errorf("failed to get chat participants; %w", err)
 	}
 
 	// convert members to Display names
@@ -74,93 +75,78 @@ func (chat *Voice) OnMessage(speaker *discordgo.User, msg string) {
 	funcs := chat.getAvailableFunctions(chat.Session, speaker)
 	funcs = append(funcs, chat.GetFunction_LeaveChannel())
 
-	// TODO: update called functions in
-	// chat to handle non-text message processing
-	start := time.Now()
-	history, err = chat.Brain.Process(
-		chat.Ctx,
-		system,
-		history,
-		message,
-		funcs,
-		ai.LanguageModel_GPT35, // voice needs to be fast
-		chat.getInternalArgs(chat.Session, speaker, chat.ChatID, chat.Connection.ChannelID),
-	)
-	if err != nil {
-		logrus.
-			WithError(err).
-			WithField("speaker", speaker.Username).
-			WithField("message", msg).
-			Errorln("failed while processing in brain")
+	pipe := utils.NewStringPipe()
 
-		return
-	}
+	group := errgroup.Group{}
+	group.SetLimit(2)
 
-	if len(history) == 0 {
-		logrus.
-			WithError(err).
-			WithField("speaker", speaker.Username).
-			WithField("message", msg).
-			Errorln("blank history returned from brain.Process")
+	// writer routine will start reading in
+	// openAI responses & return a final history
+	group.Go(func() error {
+		defer pipe.Close()
 
-		return
-	}
-
-	// update history
-	chat.History = history
-
-	// get response message
-	res := history[len(history)-1]
-
-	// TODO: improve this log
-	logrus.
-		WithField("sender", sender.GetDisplayName()).
-		WithField("message", msg).
-		WithField("response", res.Content).
-		WithField("latency", time.Since(start).String()).
-		Infoln("voice chat log")
-
-	response := chat.replaceMarkdownLinks(res.Content)
-
-	// if she just left the chat for w/e reason she can't talk back
-	if chat.Connection == nil {
-		return
-	}
-
-	// WIP
-	err = chat.streamSpeech(response)
-	if err != nil {
-		logrus.WithError(err).Errorln("failed to stream tts")
-		return
-	}
-
-	return
-
-	// convert response message to audio files
-	files, err := chat.genSpeech(response)
-	if err != nil {
-		logrus.
-			WithError(err).
-			WithField("speaker", speaker.Username).
-			WithField("message", msg).
-			Errorln("failed to generate TTS audio")
-
-		return
-	}
-
-	// play audio in sequence
-	for _, file := range files {
-		err = chat.play(file)
+		new_history, err := chat.Brain.ProcessChunked(
+			chat.Ctx,
+			pipe,
+			system,
+			history,
+			message,
+			funcs,
+			ai.LanguageModel_GPT4, // voice needs to be fast
+			chat.getInternalArgs(chat.Session, speaker, chat.ChatID, chat.Connection.ChannelID),
+		)
 		if err != nil {
 			logrus.
 				WithError(err).
 				WithField("speaker", speaker.Username).
 				WithField("message", msg).
-				Errorln("failed to play TTS audio")
+				Errorln("failed while processing in brain")
 
-			break
+			return fmt.Errorf("failed to process in brain; %w", err)
 		}
+
+		if len(new_history) == 0 {
+			logrus.
+				WithError(err).
+				WithField("speaker", speaker.Username).
+				WithField("message", msg).
+				Errorln("blank history returned from brain.Process")
+
+			return errors.New("no history returned from AI")
+		}
+
+		// update history
+		history = new_history
+
+		return nil
+	})
+	// stream chunked responses to output
+	group.Go(func() error {
+		for {
+			line, err := pipe.Read()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("failed to read pipe; %w", err)
+			}
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+
+			output <- line
+		}
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return fmt.Errorf("failed streaming response; %w", err)
 	}
+
+	// update history
+	chat.History = history
+
+	return nil
 }
 
 // get voice chat members by scanning the voicestates
@@ -306,18 +292,6 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
-	// lock here since aika is processing an existing message
-	locked := vc.Mutex.TryLock()
-	if !locked {
-		// she's processing some other spoken message
-		logrus.
-			WithField("speaker", speakerID).
-			Warnln("missed spoken message due to processing")
-
-		return
-	}
-	defer vc.Mutex.Unlock()
-
 	member, err := vc.Session.State.Member(vc.ChatID, speakerID)
 	if err != nil {
 		logrus.WithError(err).Errorln("failed to get member")
@@ -326,7 +300,6 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	//
 	// Speech to text
 	//
-
 	stt_start := time.Now()
 	// encode voice snippet to wave file
 	waveFile, err := transcoding.DiscordToFile(packets, "assets/audio")
@@ -344,34 +317,115 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	// clean wave file from disk so i don't leak
 	os.Remove(waveFile)
 
+	// lock here since aika is processing an existing message
+	locked := vc.Mutex.TryLock()
+	if !locked {
+		// she's processing some other spoken message
+		logrus.
+			WithField("speaker", speakerID).
+			Warnln("missed spoken message due to processing")
+
+		return
+	}
+	defer vc.Mutex.Unlock()
+
 	stt_latency := time.Since(stt_start)
 
-	// maybe ?
-	/*
-		if !strings.Contains(strings.ToLower(text), "aika") {
-			logrus.WithField("text", text).Debugln("dropped message not mentioning aika")
-			return
-		}
-	*/
+	// if she cannot talk (for leaving chat) exit early
+	if vc.Connection == nil {
+		return
+	}
+
+	//
+	// Filter out messages that don't mention AIKA (expensive as fuck!)
+	//
+	if !strings.Contains(strings.ToLower(text), "aika") {
+		logrus.WithField("text", text).Debugln("dropped message not mentioning aika")
+		return
+	}
+	if strings.Contains(strings.ToLower(text), "aika, an ai chatbot.") {
+		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
+		return
+	}
+
+	if strings.Contains(strings.ToLower(text), "aika, the ai chatbot") {
+		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
+		return
+	}
+
+	logrus.
+		WithField("clip", duration.String()).
+		WithField("input", text).
+		WithField("sender", member.User.Username).
+		Debug("processing new message")
+
+	speakChan := make(chan string)
+
+	group := errgroup.Group{}
+	group.SetLimit(2)
+
+	var ai_latency time.Duration
+	var chat_latency time.Duration
 
 	//
 	// Text Generation
 	//
+	group.Go(func() error {
+		defer close(speakChan)
 
-	// TODO: split this out for more accurate metrics
+		ai_start := time.Now()
+
+		err := vc.streamResponse(member.User, text, speakChan)
+		if err != nil {
+			return fmt.Errorf("failed to stream response; %w", err)
+		}
+
+		ai_latency = time.Since(ai_start)
+		return nil
+	})
 
 	//
 	// Text To Speech
 	//
-	chat_start := time.Now()
-	vc.OnMessage(member.User, text)
+	full_response := ""
+	group.Go(func() error {
+		chat_start := time.Now()
+
+		for {
+			response, ok := <-speakChan
+			if !ok {
+				break
+			}
+			full_response += response + "\n"
+
+			if vc.Connection == nil {
+				continue // can't talk but need to drain speakChan
+			}
+
+			err = vc.streamSpeech(response)
+			if err != nil {
+				return fmt.Errorf("failed to stream tts; %w", err)
+			}
+		}
+
+		chat_latency = time.Since(chat_start)
+		return nil
+	})
+
+	err = group.Wait()
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to talk in chat")
+		return
+	}
 
 	logrus.
 		WithField("clip", duration.String()).
-		WithField("text", text).
+		WithField("input", text).
+		WithField("output", full_response).
 		WithField("sender", member.User.Username).
 		WithField("latency_stt", stt_latency.String()).
-		WithField("latency_tts", time.Since(chat_start).String()).
+		WithField("latency_ai", ai_latency.String()).
+		WithField("latency_tts", chat_latency.String()).
 		WithField("latency_full", time.Since(full_start).String()).
 		Debug("audio chat handling done")
 }
@@ -396,6 +450,7 @@ func (vc *Voice) streamSpeech(content string) error {
 	})
 	// routine for transcoding MP3 to discord send
 	group.Go(func() error {
+		//TODO: panic when saying in voice "leave" - she tries to talk back lmfao
 		err := transcoding.StreamMP3ToOpus(pr, vc.Connection.OpusSend)
 		if err != nil {
 			return fmt.Errorf("failed to transcode mp3 stream; %w", err)
@@ -405,91 +460,6 @@ func (vc *Voice) streamSpeech(content string) error {
 	})
 
 	return group.Wait()
-}
-
-// generate AUDIO files with speech in sequence
-func (vc *Voice) genSpeech(content string) ([]string, error) {
-	// break content into spoken lines
-	lines := strings.Split(content, "\n")
-	text_lines := []string{}
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue // skip blank lines!
-		}
-		text_lines = append(text_lines, strings.TrimSpace(line))
-	}
-
-	// download in parallel on 2 threads
-	// https://help.elevenlabs.io/hc/en-us/articles/14312733311761-How-many-requests-can-I-make-and-can-I-increase-it-
-	// I can only download 2 in parallel at free teir
-	group := errgroup.Group{}
-	group.SetLimit(2)
-
-	// populate files with spoken line audio files
-	// in ORDER
-	files := make([]string, len(text_lines))
-	for idx, line := range text_lines {
-		// gen tts
-		text := line
-		entry := idx
-		group.Go(func() error {
-			path, err := vc.Speaker.TextToSpeech(text, "assets/audio")
-			if err != nil {
-				return fmt.Errorf("failed tts gen; %w", err)
-			}
-
-			// safely push path to files list
-			files[entry] = path
-			return nil
-		})
-	}
-	// wait for all files to be downloaded
-	err := group.Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	// return spoken files in order of lines
-	return files, nil
-}
-
-// play an AUDIO file in the current voice chat
-func (vc *Voice) play(file string) error {
-	if vc.Connection == nil {
-		return ErrNotConnected
-	}
-
-	// convert Mp3 file to Opus frames
-	opus, err := transcoding.MP3ToOpus(file)
-	if err != nil {
-		return err
-	}
-
-	// send frames
-	vc.Connection.Speaking(true)
-	for _, packet := range opus {
-		vc.Connection.OpusSend <- packet
-		// sleep sampleRate ?
-	}
-	vc.Connection.Speaking(false)
-
-	/*
-		// TODO:
-		// rewrite this from scratch
-		// so its not doggers
-		// we should actually look to pipe in a READER interface
-		// this way we can feed it an MP3 stream (for improved efficiency)
-		stop := make(chan bool)
-		dgvoice.OnError = func(str string, err error) {
-			if err != nil {
-				logrus.WithError(err).Errorln(str)
-			}
-		}
-		dgvoice.PlayAudioFile(vc.Connection, file, stop)
-		close(stop)
-
-	*/
-	return nil
 }
 
 // ------------- FUNCTIONS for AI to call which can call CONNECT and DISCONNECT
