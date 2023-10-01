@@ -46,7 +46,8 @@ type Voice struct {
 
 	// pcmChan := Mixer.Create()
 	// defer close(pcmChan)
-	// Mixer *transcoding.Mixer
+	Mixer    *transcoding.Mixer
+	MixerPCM chan []int16
 }
 
 func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output chan string) error {
@@ -246,6 +247,28 @@ func (vc *Voice) JoinVoice(guild string, channel string) error {
 	}
 	vc.Connection = conn
 
+	// TODO: clean up the mixer proxy
+
+	if vc.Mixer != nil {
+		// ???! what the fuck ?
+		vc.Mixer = nil // kill it with fire
+		logrus.Warnln("mixer was not destroyed before joining voice")
+	}
+
+	encoder, err := transcoding.NewOpusEncoder()
+	if err != nil {
+		return fmt.Errorf("failed to construct mixer proxy encoder; %w", err)
+	}
+
+	vc.MixerPCM = make(chan []int16)
+	vc.Mixer = transcoding.NewMixer(vc.MixerPCM)
+	go vc.Mixer.Start()
+	go func() {
+		transcoding.StreamPCMToOpus(encoder, vc.MixerPCM, vc.Connection.OpusSend)
+	}()
+
+	// TODO: clean up the mixer proxy ^
+
 	// keep ssrc<->user maps synced while connected
 	// this does _not_ need reset after changing channel ?
 	vc.Connection.AddHandler(vc.speakingHandler)
@@ -255,9 +278,20 @@ func (vc *Voice) JoinVoice(guild string, channel string) error {
 
 	return nil
 }
+
 func (vc *Voice) LeaveVoice() error {
 	if vc.Connection == nil {
 		return ErrNotConnected
+	}
+
+	// if we are using a mixer
+	// shut it down
+	// kill the mixer
+	if vc.Mixer != nil {
+		vc.Mixer.Stop()
+		vc.Mixer = nil
+		close(vc.MixerPCM)
+		vc.MixerPCM = nil
 	}
 
 	vc.Connection.Speaking(false)
@@ -493,15 +527,41 @@ func (vc *Voice) streamSpeech(content string) error {
 
 		return nil
 	})
-	// routine for transcoding MP3 to discord send
-	group.Go(func() error {
-		err := transcoding.StreamMP3ToOpus(pr, vc.Connection.OpusSend)
-		if err != nil {
-			return fmt.Errorf("failed to transcode mp3 stream; %w", err)
-		}
 
-		return nil
-	})
+	// MP3->PCM
+	// PCM->MIXER->PCM
+	// PCM->OPUS
+
+	if vc.Mixer != nil {
+		// create mixer input
+		input := vc.Mixer.Create()
+
+		// write decoded PCM to input channel
+		group.Go(func() error {
+			defer close(input)
+
+			err := transcoding.StreamMP3ToPCM(pr, input)
+			if err != nil {
+				return fmt.Errorf("failed to decode mp3 stream; %w", err)
+			}
+			return nil
+		})
+		// in theory
+		// mixer should already be attached to PCM->Opus encoded sending
+		// nothing more should be needed
+
+	} else {
+		// No mixer - audio transcoded direct to Opus
+		// routine for transcoding MP3 to discord send
+		group.Go(func() error {
+			err := transcoding.StreamMP3ToOpus(pr, vc.Connection.OpusSend)
+			if err != nil {
+				return fmt.Errorf("failed to transcode mp3 stream; %w", err)
+			}
+
+			return nil
+		})
+	}
 
 	return group.Wait()
 }

@@ -50,6 +50,14 @@ func DiscordToFile(packets []*discordgo.Packet, outdir string) (string, error) {
 	return output, nil
 }
 
+func NewOpusEncoder() (*gopus.Encoder, error) {
+	encoder, err := gopus.NewEncoder(frameRate, channels, gopus.Audio)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct encoder; %w", err)
+	}
+	return encoder, nil
+}
+
 // blocking function to read MP3 data from the io.Reader and
 // return opus frames on the opus channel
 func StreamMP3ToOpus(reader io.Reader, opusChan chan []byte) error {
