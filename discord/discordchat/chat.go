@@ -221,7 +221,8 @@ func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
 		Session:    s, // ???? TODO can we get rid of this?
 
 		Speaker: &voice.ElevenLabs{
-			ApiKey: os.Getenv("ELEVENLABS_APIKEY"),
+			ApiKey:  os.Getenv("ELEVENLABS_APIKEY"),
+			VoiceID: "BreKkXSwy4hr1vgm7ZqX",
 		},
 
 		// google free-to-use TTS

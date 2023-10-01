@@ -431,6 +431,7 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 				continue // can't talk but need to drain speakChan
 			}
 
+			logrus.WithField("line", response).Debug("speaking message")
 			err = vc.streamSpeech(response)
 			if err != nil {
 				return fmt.Errorf("failed to stream tts; %w", err)
