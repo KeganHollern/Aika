@@ -74,9 +74,11 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 		Name:    sender.GetDisplayName(),
 	}
 
-	// append voice leave functionality
+	// append voice functionality
 	funcs := chat.getAvailableFunctions(chat.Session, speaker)
 	funcs = append(funcs, chat.GetFunction_LeaveChannel())
+	funcs = append(funcs, chat.GetFunction_GetVoices())
+	funcs = append(funcs, chat.GetFunction_SetVoice())
 
 	pipe := utils.NewStringPipe()
 
