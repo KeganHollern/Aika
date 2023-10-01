@@ -68,11 +68,15 @@ func main() {
 		logrus.WithError(err).Fatalln("error reading config.yaml")
 	}
 
+	config := openai.DefaultConfig(openaiKey)
+	// default: https://api.openai.com/v1
+	config.BaseURL = "https://gateway.ai.cloudflare.com/v1/10c870e2abe3417ea2697fd5a080e634/open-ai/openai"
+
 	logrus.WithField("discord_key", discordKey[0:3]).Debugln("starting chatbot...")
 	_, err = discord.StartChatbot(
 		ctx,
 		discordKey,
-		openai.NewClient(openaiKey),
+		openai.NewClientWithConfig(config),
 		s3,
 		cfg,
 	)

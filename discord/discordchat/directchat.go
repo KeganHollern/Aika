@@ -68,11 +68,9 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 			chat.getInternalArgs(s, m.Author, m.GuildID, m.ChannelID),
 		)
 		if err != nil {
-			s.ChannelMessageSend(m.ChannelID, err.Error())
 			return fmt.Errorf("failed while processing in brain; %w", err)
 		}
 		if len(new_history) == 0 {
-			s.ChannelMessageSend(m.ChannelID, "my brain is empty")
 			return errors.New("blank history returned from brain.Process")
 		}
 
@@ -159,6 +157,8 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	if err := group.Wait(); err != nil {
 		logrus.WithError(err).Errorln("failed to send message")
+		s.ChannelMessageSend(m.ChannelID, err.Error())
+		return
 	}
 
 	chat.History = history

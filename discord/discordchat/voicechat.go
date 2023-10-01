@@ -32,13 +32,21 @@ type Voice struct {
 
 	History []openai.ChatCompletionMessage
 
-	// voice stuff
+	// discord voice stuff
 	Connection *discordgo.VoiceConnection
 	Session    *discordgo.Session
 	SsrcUsers  map[uint32]string
 
+	// voice receive processor
 	Receiver *voice.Receiver
-	Speaker  voice.TTS
+	// speech processor
+	Speaker voice.TTS
+
+	// TODO: mixer wrapper for VoiceConnection
+
+	// pcmChan := Mixer.Create()
+	// defer close(pcmChan)
+	// Mixer *transcoding.Mixer
 }
 
 func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output chan string) error {
@@ -237,6 +245,7 @@ func (vc *Voice) JoinVoice(guild string, channel string) error {
 		return err
 	}
 	vc.Connection = conn
+
 	// keep ssrc<->user maps synced while connected
 	// this does _not_ need reset after changing channel ?
 	vc.Connection.AddHandler(vc.speakingHandler)
@@ -252,7 +261,7 @@ func (vc *Voice) LeaveVoice() error {
 	}
 
 	vc.Connection.Speaking(false)
-	// TODO: this is crashing
+
 	close(vc.Connection.OpusRecv)
 	err := vc.Connection.Disconnect()
 	vc.Connection = nil
@@ -486,7 +495,6 @@ func (vc *Voice) streamSpeech(content string) error {
 	})
 	// routine for transcoding MP3 to discord send
 	group.Go(func() error {
-		//TODO: panic when saying in voice "leave" - she tries to talk back lmfao
 		err := transcoding.StreamMP3ToOpus(pr, vc.Connection.OpusSend)
 		if err != nil {
 			return fmt.Errorf("failed to transcode mp3 stream; %w", err)
@@ -600,13 +608,17 @@ func (v *Voice) handle_getVoices(msgMap map[string]interface{}) (string, error) 
 }
 
 func (v *Voice) handle_joinChannel(msgMap map[string]interface{}) (string, error) {
-	// if sender is not in a voice chat then we can't join anything
+
+	guild := msgMap["internal_sender_guildid"].(string)
+	channel := msgMap["internal_sender_author_vc"].(string)
+
+	// if user is not in a voice channel & no channelID was provided we can't make it work
 	if msgMap["internal_sender_author_vc"].(string) == "" {
-		return "user is not in a voice chat", nil
+		return "user is not in a voice chat.", nil
 	}
 
 	// call function
-	err := v.JoinVoice(msgMap["internal_sender_guildid"].(string), msgMap["internal_sender_author_vc"].(string))
+	err := v.JoinVoice(guild, channel)
 	if err != nil {
 		return "", err
 	}

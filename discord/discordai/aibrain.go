@@ -139,6 +139,7 @@ func (brain *AIBrain) ProcessChunked(
 			if err != nil {
 				// functions only return ERR when a fatal error occurs
 				// anything that OpenAI should process is returned as result
+				logrus.WithField("call", res.FunctionCall).WithError(err).Debugln("function execute failed")
 				return nil, fmt.Errorf("failed during function call; %w", err)
 			}
 			logrus.WithField("call", res.FunctionCall).WithField("result", result).Debugln("executed function")
@@ -250,6 +251,7 @@ func (brain *AIBrain) Process(
 			if err != nil {
 				// functions only return ERR when a fatal error occurs
 				// anything that OpenAI should process is returned as result
+				logrus.WithField("call", res.FunctionCall).WithError(err).Debugln("function execute failed")
 				return nil, fmt.Errorf("failed during function call; %w", err)
 			}
 			logrus.WithField("call", res.FunctionCall).WithField("result", result).Debugln("executed function")
