@@ -6,12 +6,14 @@ import (
 	"aika/utils"
 	"aika/voice"
 	"aika/voice/transcoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -389,6 +391,7 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 
 	var ai_latency time.Duration
 	var chat_latency time.Duration
+	var chat_first_latency time.Duration
 
 	//
 	// Text Generation
@@ -413,12 +416,15 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 	full_response := ""
 	group.Go(func() error {
 		chat_start := time.Now()
-
+		var once sync.Once
 		for {
 			response, ok := <-speakChan
 			if !ok {
 				break
 			}
+
+			once.Do(func() { chat_first_latency = time.Since(chat_start) })
+
 			full_response += response + "\n"
 
 			if vc.Connection == nil {
@@ -447,10 +453,13 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		WithField("input", text).
 		WithField("output", full_response).
 		WithField("sender", member.User.Username).
-		WithField("latency_stt", stt_latency.String()).
-		WithField("latency_ai", ai_latency.String()).
-		WithField("latency_tts", chat_latency.String()).
-		WithField("latency_full", time.Since(full_start).String()).
+		WithField("latency", map[string]string{
+			"stt":        stt_latency.String(),
+			"gpt_full":   ai_latency.String(),
+			"gpt_first":  chat_first_latency.String(),
+			"speak_full": chat_latency.String(),
+			"e2e":        time.Since(full_start).String(),
+		}).
 		Debug("audio chat handling done")
 }
 
@@ -488,7 +497,21 @@ func (vc *Voice) streamSpeech(content string) error {
 
 // ------------- FUNCTIONS for AI to call which can call CONNECT and DISCONNECT
 
-// SCUFFED
+// SCUFFED - put these somewhere else lmfao
+
+func (vc *Voice) GetFunction_GetVoices() discordai.Function {
+	return discordai.Function{
+		Definition: definition_getVoices,
+		Handler:    vc.handle_getVoices,
+	}
+}
+
+func (vc *Voice) GetFunction_SetVoice() discordai.Function {
+	return discordai.Function{
+		Definition: definition_setVoice,
+		Handler:    vc.handle_setVoice,
+	}
+}
 
 func (vc *Voice) GetFunction_JoinChannel() discordai.Function {
 	return discordai.Function{
@@ -501,6 +524,33 @@ func (vc *Voice) GetFunction_LeaveChannel() discordai.Function {
 		Definition: definition_leaveChannel,
 		Handler:    vc.handle_leaveChannel,
 	}
+}
+
+var definition_setVoice = openai.FunctionDefinition{
+	Name:        "setVoice",
+	Description: "Set the speech voice by name or ID",
+	Parameters: jsonschema.Definition{
+		Type: jsonschema.Object,
+		Properties: map[string]jsonschema.Definition{
+			"nameOrID": {
+				Type:        jsonschema.String,
+				Description: "desired voice name OR ID.",
+				Properties:  map[string]jsonschema.Definition{},
+			},
+		},
+		Required: []string{"nameOrID"},
+	},
+}
+
+var definition_getVoices = openai.FunctionDefinition{
+	Name:        "getVoices",
+	Description: "Get all support speech voice names and IDs.",
+
+	Parameters: jsonschema.Definition{
+		Type:       jsonschema.Object,
+		Properties: map[string]jsonschema.Definition{},
+		Required:   []string{},
+	},
 }
 
 var definition_leaveChannel = openai.FunctionDefinition{
@@ -522,6 +572,28 @@ var definition_joinChannel = openai.FunctionDefinition{
 		Properties: map[string]jsonschema.Definition{},
 		Required:   []string{},
 	},
+}
+
+func (v *Voice) handle_setVoice(msgMap map[string]interface{}) (string, error) {
+	err := v.Speaker.SetVoice(msgMap["nameOrID"].(string))
+	if err != nil {
+		return "", err
+	}
+
+	return "voice set", nil
+}
+
+func (v *Voice) handle_getVoices(msgMap map[string]interface{}) (string, error) {
+	voices, err := v.Speaker.GetVoices()
+	if err != nil {
+		return "", err
+	}
+
+	data, err := json.Marshal(voices)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func (v *Voice) handle_joinChannel(msgMap map[string]interface{}) (string, error) {

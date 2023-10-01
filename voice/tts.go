@@ -14,6 +14,16 @@ type TTS interface {
 	// writes the generated audio to the io.Writer in MP3
 	// format
 	TextToSpeechStream(text string, writer io.Writer) error
+	// GetVoices returns a list of possible voices for this
+	// TTS engine. If applicable, a voice Identifier is included.
+	GetVoices() ([]Voice, error)
+	// SetVoice changes the voice used for text to speech.
+	SetVoice(nameOrId string) error
+}
+
+type Voice struct {
+	Name string
+	Id   string
 }
 
 // --- utilities for this package

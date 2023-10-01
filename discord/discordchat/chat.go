@@ -194,6 +194,8 @@ func (c *Chat) getAvailableFunctions(
 		if c.isAdmin(user.ID) || c.isSubscriber(c.ChatID) {
 			functions = append(functions, c.voice.GetFunction_JoinChannel())
 			functions = append(functions, c.voice.GetFunction_LeaveChannel())
+			functions = append(functions, c.voice.GetFunction_GetVoices())
+			functions = append(functions, c.voice.GetFunction_SetVoice())
 		}
 	}
 

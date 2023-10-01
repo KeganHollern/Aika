@@ -9,7 +9,8 @@ import (
 
 func TestElevenLabs(t *testing.T) {
 	var speaker TTS = &ElevenLabs{
-		ApiKey: os.Getenv("ELEVENLABS_APIKEY"),
+		ApiKey:  os.Getenv("ELEVENLABS_APIKEY"),
+		VoiceID: "BreKkXSwy4hr1vgm7ZqX",
 	}
 	test_speaker(speaker, t)
 }
