@@ -62,10 +62,9 @@ func (player *Player) action_PlayAudio(url string) error {
 
 	formats := vid.Formats.WithAudioChannels()
 	formats.Sort()
+	// this selects the _smallest_ format or so
 	target := formats[len(formats)-1]
 
-	// TODO: download smallest fucking format
-	// to save me money lmfao
 	stream, size, err := c.GetStream(vid, &target)
 	if err != nil {
 		return fmt.Errorf("failed to get stream; %w", err)
@@ -79,7 +78,7 @@ func (player *Player) action_PlayAudio(url string) error {
 	go func() {
 		// TODO: make a way to 'stop' playing lmao
 		defer close(input)
-		err = transcoding.StreamMPEGToPCM(stream, input)
+		err = transcoding.StreamMPEGToPCM(stream, 0.3, input)
 		if err != nil {
 			logrus.WithError(err).Errorln("failed to stream youtube video to PCM audio")
 		}

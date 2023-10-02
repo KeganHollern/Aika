@@ -547,7 +547,7 @@ func (vc *Voice) streamSpeech(content string) error {
 		group.Go(func() error {
 			defer close(input)
 
-			err := transcoding.StreamMPEGToPCM(pr, input)
+			err := transcoding.StreamMPEGToPCM(pr, 1.0, input)
 			if err != nil {
 				return fmt.Errorf("failed to decode mp3 stream; %w", err)
 			}
