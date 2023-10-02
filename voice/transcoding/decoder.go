@@ -21,10 +21,17 @@ const (
 )
 
 // Stream decode MP3 reader to PCM frame channel
-func StreamMP3ToPCM(reader io.Reader, ch chan []int16) error {
+func StreamMPEGToPCM(reader io.Reader, ch chan []int16) error {
 	// Create a shell command "object" to run.
 	// We set up ffmpeg to read from its stdin (the provided PipeReader) by passing "-" as the input file.
-	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+	run := exec.Command(
+		"ffmpeg",
+		"-i", "-",
+		"-f", "s16le",
+		"-ar", strconv.Itoa(frameRate),
+		"-ac", strconv.Itoa(channels),
+		"-vn", // This flag ensures that only audio is processed
+		"pipe:1")
 	run.Stdin = reader
 
 	ffmpegout, err := run.StdoutPipe()

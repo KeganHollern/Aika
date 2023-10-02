@@ -76,7 +76,7 @@ func StreamMP3ToOpus(reader io.Reader, opusChan chan []byte) error {
 	group.Go(func() error {
 		defer close(pcmChan) // we close the PCM channel here to signify MP3 streaming is done
 
-		err := StreamMP3ToPCM(reader, pcmChan)
+		err := StreamMPEGToPCM(reader, pcmChan)
 		if err != nil {
 			return fmt.Errorf("error decoding mp3; %w", err)
 		}
