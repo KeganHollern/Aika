@@ -29,6 +29,7 @@ ChatGPT powered waifu.
 - Youtube Search
 - Youtube Video Download
 - **Voice** chat integration
+- Youtube Music through Voice
 
 ## Developer Notes
 
@@ -40,6 +41,8 @@ ChatGPT powered waifu.
 - Youtube 'downloads' go to S3 storage
 - Captured voice clips are saved on disk
 - TTS is streamed if ElevenLabs is used
+- Music cannot be stopped (for now)
+- Aika can talk while playing music
 
 ## Run
 
