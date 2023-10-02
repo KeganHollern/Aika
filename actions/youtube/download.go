@@ -13,20 +13,20 @@ import (
 	yt "github.com/kkdai/youtube/v2"
 )
 
-type Youtube struct {
+type Downloader struct {
 	S3 *storage.S3
 }
 
-func (ytwrapper *Youtube) GetFunction_DownloadYoutube() discordai.Function {
+func (downloader *Downloader) GetFunction_SaveYoutube() discordai.Function {
 	return discordai.Function{
-		Definition: definition_DownloadYoutube,
-		Handler:    ytwrapper.handler_DownloadYoutube,
+		Definition: definition_SaveYoutube,
+		Handler:    downloader.handler_SaveYoutube,
 	}
 }
 
-var definition_DownloadYoutube = openai.FunctionDefinition{
-	Name:        "DownloadYoutube",
-	Description: "Convert a youtube video URL to a downloadable MP4 URL.",
+var definition_SaveYoutube = openai.FunctionDefinition{
+	Name:        "SaveYoutube",
+	Description: "Save a youtube video.",
 	Parameters: jsonschema.Definition{
 		Type: jsonschema.Object,
 		Properties: map[string]jsonschema.Definition{
@@ -40,8 +40,8 @@ var definition_DownloadYoutube = openai.FunctionDefinition{
 	},
 }
 
-func (ytwrapper *Youtube) handler_DownloadYoutube(msgMap map[string]interface{}) (string, error) {
-	results, err := ytwrapper.action_DownloadYoutube(msgMap["url"].(string))
+func (downloader *Downloader) handler_SaveYoutube(msgMap map[string]interface{}) (string, error) {
+	results, err := downloader.action_SaveYoutube(msgMap["url"].(string))
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +54,7 @@ func (ytwrapper *Youtube) handler_DownloadYoutube(msgMap map[string]interface{})
 	return string(data), err
 }
 
-func (ytwrapper *Youtube) action_DownloadYoutube(url string) (string, error) {
+func (downloader *Downloader) action_SaveYoutube(url string) (string, error) {
 	c := yt.Client{}
 	vid, err := c.GetVideo(url)
 	if err != nil {
@@ -64,12 +64,12 @@ func (ytwrapper *Youtube) action_DownloadYoutube(url string) (string, error) {
 	path := "user-content/youtube/" + vid.ID + ".mp4"
 
 	// if already exists just give the user the existing video
-	exists, err := ytwrapper.S3.KeyExists(path)
+	exists, err := downloader.S3.KeyExists(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to check s3; %w", err)
 	}
 	if exists {
-		return fmt.Sprintf("%s/%s", ytwrapper.S3.PublicUrl, path), nil
+		return fmt.Sprintf("%s/%s", downloader.S3.PublicUrl, path), nil
 	}
 
 	formats := vid.Formats.WithAudioChannels()
@@ -85,12 +85,12 @@ func (ytwrapper *Youtube) action_DownloadYoutube(url string) (string, error) {
 	err = storage.ErrNoDataTransfered
 	i := 0
 	for errors.Is(err, storage.ErrNoDataTransfered) && i < 2 {
-		err = ytwrapper.S3.StreamUpload(stream, path)
+		err = downloader.S3.StreamUpload(stream, path)
 		i++
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to upload stream to s3; %w", err)
 	}
 
-	return fmt.Sprintf("%s/%s", ytwrapper.S3.PublicUrl, path), nil
+	return fmt.Sprintf("%s/%s", downloader.S3.PublicUrl, path), nil
 }

@@ -173,10 +173,10 @@ func (c *Chat) getAvailableFunctions(
 	functions = append(functions, oai.GetFunction_DallE())
 
 	// youtube stuff
-	yt := &youtube.Youtube{
+	yt := &youtube.Downloader{
 		S3: c.S3,
 	}
-	functions = append(functions, yt.GetFunction_DownloadYoutube())
+	functions = append(functions, yt.GetFunction_SaveYoutube())
 
 	// admin commands
 	if c.isAdmin(user.ID) {
@@ -188,6 +188,11 @@ func (c *Chat) getAvailableFunctions(
 
 	//-- add functions to tell aika to leave/join voice chat
 	if c.voice != nil {
+		player := &youtube.Player{
+			Mixer: c.voice.Mixer,
+		}
+		functions = append(functions, player.GetFunction_PlayAudio())
+
 		// admin OR subscriber
 		// chatID is always guildID when voice is non nil
 		// this is implicit and retarded but o wel

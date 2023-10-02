@@ -71,7 +71,16 @@ func action_SearchYoutube(input string) (youtubeResults, error) {
 		return searchResults, fmt.Errorf("failed to search youtube; %w", err)
 	}
 
-	for _, result := range results[0:maxSearchResults] {
+	// safely handle no results
+	end := maxSearchResults
+	if len(results) < end {
+		end = len(results)
+	}
+	if end == 0 {
+		return searchResults, nil
+	}
+
+	for _, result := range results[0:end] {
 		searchResults.Results = append(searchResults.Results, youtubeResult{
 			Title: result.Title,
 			URL:   result.URL,
