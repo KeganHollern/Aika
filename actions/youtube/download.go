@@ -73,15 +73,18 @@ func (downloader *Downloader) action_SaveYoutube(url string) (string, error) {
 	}
 
 	formats := vid.Formats.WithAudioChannels()
-	// TODO: download smallest fucking format
+	formats.Sort()
+	// TODO: download smallest fucking video format (MPEG/MP4!)
 	// to save me money lmfao
-	stream, _, err := c.GetStream(vid, &formats[0])
+	target := formats[0] // largest format
+
+	stream, _, err := c.GetStream(vid, &target)
 	if err != nil {
 		return "", fmt.Errorf("failed to get stream; %w", err)
 	}
 
 	// stream video directly to S3
-	// retry if 0 data transfers (idk? bug?)
+	// retry if 0 data transfers (idk? bug?) y
 	err = storage.ErrNoDataTransfered
 	i := 0
 	for errors.Is(err, storage.ErrNoDataTransfered) && i < 2 {

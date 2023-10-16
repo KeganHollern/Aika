@@ -45,6 +45,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 	// todo: write a wrapper around
 	// this that fullfills the same
 	// interface as utils.NewStringPipe()
+	// basically I want a single `Interface` that both of these can fullfil
 	pipe := utils.NewBytePipe()
 
 	//msgPipe := utils.NewStringPipe()
@@ -165,6 +166,7 @@ func (chat *Direct) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	res := history[len(history)-1]
 
+	// TODO: improve this log
 	logrus.
 		WithField("sender", sender.GetDisplayName()).
 		WithField("message", msg).

@@ -77,6 +77,8 @@ func (player *Player) action_PlayAudio(url string) error {
 	input := player.Mixer.Create()
 	go func() {
 		// TODO: make a way to 'stop' playing lmao
+		//TODO: she doesn't send "start speaking" so idk whats up
+
 		defer close(input)
 		err = transcoding.StreamMPEGToPCM(stream, 0.3, input)
 		if err != nil {

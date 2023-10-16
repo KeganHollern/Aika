@@ -58,6 +58,7 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// todo: write a wrapper around
 	// this that fullfills the same
 	// interface as utils.NewStringPipe()
+	// see "directchat.go" comment on this
 	pipe := utils.NewBytePipe()
 
 	group := errgroup.Group{}
@@ -190,6 +191,7 @@ func (chat *Guild) setHistory(channel string, history []openai.ChatCompletionMes
 func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]*ChatParticipant, error) {
 
 	participants := []*ChatParticipant{}
+	dedupID := make(map[string]bool)
 
 	gd, err := s.State.Guild(chat.ChatID)
 	if err != nil {
@@ -199,6 +201,11 @@ func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]*Chat
 	for _, member := range gd.Members {
 		// aika can't see other bots (or herself)
 		if member.User.Bot {
+			continue
+		}
+
+		// dedupe because state list is gay
+		if _, ok := dedupID[member.User.ID]; ok {
 			continue
 		}
 
@@ -235,6 +242,7 @@ func (chat *Guild) getChatMembers(s *discordgo.Session, channel string) ([]*Chat
 			continue
 		}
 
+		dedupID[member.User.ID] = true
 		participants = append(participants, &ChatParticipant{User: member.User})
 	}
 

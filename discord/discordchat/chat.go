@@ -62,7 +62,7 @@ func (c *Chat) getInternalArgs(
 }
 
 func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageModel {
-	// RandalBot guild gets GPT4
+	// premium chats get GPT4
 	if c.isSubscriber(guildID) {
 		return ai.LanguageModel_GPT4
 	}
@@ -72,7 +72,6 @@ func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageMode
 		return ai.LanguageModel_GPT4
 	}
 
-	//TODO: premium chats?
 	return ai.LanguageModel_GPT35
 }
 
@@ -173,6 +172,8 @@ func (c *Chat) getAvailableFunctions(
 	functions = append(functions, oai.GetFunction_DallE())
 
 	// youtube stuff
+	// TODO: these structs can't be constructed every function call
+	// instead they need cached on the Chat object :)
 	yt := &youtube.Downloader{
 		S3: c.S3,
 	}
@@ -204,7 +205,6 @@ func (c *Chat) getAvailableFunctions(
 		}
 	}
 
-	//TODO: add more functions to this
 	return functions
 }
 

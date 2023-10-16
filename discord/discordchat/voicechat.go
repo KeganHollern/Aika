@@ -74,8 +74,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 		memberNames = append(memberNames, member.GetDisplayName())
 	}
 
-	// TODO: need a better AI brain for voice!
-	// will need an interface & multiple brain implementations?
+	// system message constructor
 	system := chat.Brain.BuildVoiceSystemMessage(memberNames)
 	history := chat.History
 	message := openai.ChatCompletionMessage{
@@ -83,6 +82,8 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 		Content: msg,
 		Name:    sender.GetDisplayName(),
 	}
+
+	logrus.WithField("system", system).Debugln("system voice message")
 
 	// TODO: we need to move this shit to "chat" or something this is rediculous
 	// append voice functionality
@@ -174,6 +175,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 
 	participants := []*ChatParticipant{}
+	dedupeID := make(map[string]bool)
 
 	gd, err := chat.Session.State.Guild(chat.ChatID)
 	if err != nil {
@@ -192,6 +194,10 @@ func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 		}
 		// aika can't see other bots (or herself)
 		if member.User.Bot {
+			continue
+		}
+
+		if _, ok := dedupeID[member.User.ID]; ok {
 			continue
 		}
 
@@ -226,6 +232,7 @@ func (chat *Voice) getChatMembers() ([]*ChatParticipant, error) {
 			continue
 		}
 
+		dedupeID[member.User.ID] = true
 		participants = append(participants, &ChatParticipant{User: member.User})
 	}
 
