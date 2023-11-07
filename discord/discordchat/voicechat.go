@@ -114,7 +114,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 			history,
 			message,
 			funcs,
-			ai.LanguageModel_GPT4, // voice needs to be fast
+			ai.LanguageModel_GPT4,
 			chat.getInternalArgs(chat.Session, speaker, chat.ChatID, chat.Connection.ChannelID),
 		)
 		if err != nil {

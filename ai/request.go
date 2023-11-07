@@ -11,8 +11,8 @@ import (
 type LanguageModel string
 
 const (
-	LanguageModel_GPT4  LanguageModel = openai.GPT40613
-	LanguageModel_GPT35 LanguageModel = openai.GPT3Dot5Turbo0613
+	LanguageModel_GPT4  LanguageModel = "gpt-4-1106-preview" //openai.GPT40613
+	LanguageModel_GPT35 LanguageModel = "gpt-3.5-turbo-1106" //openai.GPT3Dot5Turbo0613
 )
 
 type ChatRequest struct {
