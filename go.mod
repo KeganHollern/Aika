@@ -16,7 +16,7 @@ require (
 	github.com/hegedustibor/htgo-tts v0.0.0-20230402053941-cd8d1a158135
 	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/kkdai/youtube/v2 v2.9.0
-	github.com/sashabaranov/go-openai v1.15.4
+	github.com/sashabaranov/go-openai v1.17.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.3.0

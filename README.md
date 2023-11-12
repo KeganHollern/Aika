@@ -66,3 +66,5 @@ Reduce voice interaction latency further
 Discord->Whisper streaming ?
 Investigate alternative transcription APIs
 Investigate PlayHT streaming APIs for latency
+
+make aika listen for 2s after replying only to the sender- this will let natural conversations flow

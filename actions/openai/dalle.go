@@ -71,9 +71,12 @@ func (ai *DallE) handler_DallE(msgMap map[string]interface{}) (string, error) {
 func (ai *DallE) action_DallE(prompt string) (string, error) {
 	reqUrl := openai.ImageRequest{
 		Prompt:         prompt,
-		Size:           openai.CreateImageSize256x256,
+		Size:           openai.CreateImageSize1024x1024,
 		ResponseFormat: openai.CreateImageResponseFormatURL,
 		N:              1,
+		Model:          openai.CreateImageModelDallE3,
+		Quality:        openai.CreateImageQualityHD,
+		//Style:  openai.CreateImageStyleVivid,
 	}
 
 	respUrl, err := ai.Client.CreateImage(context.Background(), reqUrl)

@@ -5,6 +5,8 @@ admins:
 # Subscribed Guild IDs for GPT4
 subscribers:
   - "1092965539346907156" # RandalBot
+  - "699755264819200112" # StonkCast (HardKor)
+  - "1142245060260397096" # StreamerHouse (Hardkor)
 
 # Number of previous messages to store as history
 # TODO: make this *previous tokens* so we can control token in/out
