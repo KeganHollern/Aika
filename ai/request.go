@@ -9,10 +9,15 @@ import (
 )
 
 type LanguageModel string
+type VisionModel string
 
 const (
 	LanguageModel_GPT4  LanguageModel = "gpt-4-1106-preview" //openai.GPT40613
 	LanguageModel_GPT35 LanguageModel = "gpt-3.5-turbo-1106" //openai.GPT3Dot5Turbo0613
+)
+
+const (
+	VisionModel_GPT4 VisionModel = "gpt-4-vision-preview"
 )
 
 type ChatRequest struct {
@@ -101,4 +106,33 @@ func (request *ChatRequest) Stream(ctx context.Context, writer io.Writer) (opena
 			}
 		}
 	}
+}
+
+// since vision does not support functions, we needed a unique request for hitting the VISION model and extracting a description of the provided image
+// we can use something like "actions" to let the AI grab the description of an attached image or we can automatically attach an image description to
+// the provided AI request like:
+//
+//	What do you see?
+//
+//	*Note: the user has attached an image to their message. This is a description:*
+//	> Description of the image here
+//
+// By combining the two, "action" and "description", the AI could potentially send a _different_ request to the Vision model by
+// calling an action like "RequestImageDetails: 'what text is in the image?'"- so they have a generic description like 'a paper w/ writing on it'
+// and can ask for more details of that image like 'what is written on the paper?' ect.
+
+type ImageDescriptionRequest struct {
+	Client *openai.Client
+
+	Message openai.ChatCompletionMessage
+
+	Model VisionModel
+}
+
+func (request *VisionModel) Send(ctx context.Context) (openai.ChatCompletionMessage, error) {
+	//TODO: introduce
+	return openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleAssistant,
+		Content: "image descriptions are not yet supported",
+	}, nil
 }
