@@ -12,10 +12,5 @@ subscribers:
 # TODO: make this *previous tokens* so we can control token in/out
 history: 10
 
-# Character System Message
-character: |
-  This is your character: Your personality is a tsundere anime girl.
-  
-
 # Transcription Prompt
 transcription_prompt: "The transcript is a voice message for Aika, an AI Chatbot."

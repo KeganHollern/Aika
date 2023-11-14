@@ -60,15 +60,6 @@ func StartChatbot(
 		return nil, ErrInvalidHistoryConfiguration
 	}
 
-	characterCfg, ok := cfg.Get("character")
-	if !ok {
-		return nil, ErrInvalidCharacterConfiguration
-	}
-	character, ok := characterCfg.(string)
-	if !ok {
-		return nil, ErrInvalidCharacterConfiguration
-	}
-
 	transcriptionCfg, ok := cfg.Get("transcription_prompt")
 	if !ok {
 		return nil, ErrInvalidCharacterConfiguration
@@ -85,7 +76,6 @@ func StartChatbot(
 		Brain: &discordai.AIBrain{
 			OpenAI:              client,
 			HistorySize:         historyLen,
-			Character:           character,
 			TranscriptionPrompt: transPrompt,
 		},
 		GuildChats:  make(map[string]*discordchat.Guild),

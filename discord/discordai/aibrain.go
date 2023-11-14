@@ -27,7 +27,6 @@ type AIBrain struct {
 	OpenAI *openai.Client
 
 	HistorySize         int
-	Character           string
 	TranscriptionPrompt string
 }
 
@@ -282,7 +281,7 @@ func (brain *AIBrain) BuildSystemMessage(
 	memberNames := strings.Join(displayNames, ", ")
 	memberMentions := strings.Join(mentions, ", ")
 
-	system := fmt.Sprintf(sys, memberNames, memberMentions, brain.Character)
+	system := fmt.Sprintf(sys, memberNames, memberMentions)
 	logrus.WithField("system", system).Debugln("system message")
 
 	return openai.ChatCompletionMessage{
@@ -298,7 +297,7 @@ func (brain *AIBrain) BuildVoiceSystemMessage(
 ) openai.ChatCompletionMessage {
 	memberNames := strings.Join(displayNames, ", ")
 
-	system := fmt.Sprintf(sysVoice, memberNames, brain.Character)
+	system := fmt.Sprintf(sysVoice, memberNames)
 	// logrus.WithField("system", system).Debugln("voice system message")
 
 	return openai.ChatCompletionMessage{
