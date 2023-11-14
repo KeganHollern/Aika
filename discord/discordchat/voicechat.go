@@ -49,6 +49,11 @@ type Voice struct {
 	// defer close(pcmChan)
 	Mixer    *transcoding.Mixer
 	MixerPCM chan []int16
+
+	// these are used
+	// so the last speaker can carry on the conversation
+	lastSpeaker string
+	aiSpeakStop time.Time
 }
 
 func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output chan string) error {
@@ -251,7 +256,7 @@ func (vc *Voice) JoinVoice(guild string, channel string) error {
 		return nil
 	}
 
-	// set up to handle recieving communication in 2 second bursts of voice
+	// set up to handle recieving communication in 1 second bursts of voice
 	vc.Receiver = voice.NewReceiver(time.Second, vc.onSpeakingStop)
 
 	// connect & setup systems
@@ -416,20 +421,9 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
-	//
-	// Filter out messages that don't mention AIKA (expensive as fuck!)
-	//
-	if !strings.Contains(strings.ToLower(text), "aika") {
-		logrus.WithField("text", text).Debugln("dropped message not mentioning aika")
-		return
-	}
-	if strings.Contains(strings.ToLower(text), "aika, an ai chatbot.") {
-		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
-		return
-	}
-
-	if strings.Contains(strings.ToLower(text), "aika, the ai chatbot") {
-		logrus.WithField("text", text).Debugln("dropped message probably maltranslated")
+	// drop voice messages not meant for aika
+	if !vc.isValidVoiceMessage(speakerID, strings.ToLower(text), full_start.Add(-1*duration)) {
+		logrus.WithField("text", text).Debugln("dropped invalid voice message")
 		return
 	}
 
@@ -507,6 +501,9 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 		return
 	}
 
+	vc.lastSpeaker = speakerID
+	vc.aiSpeakStop = time.Now()
+
 	logrus.
 		WithField("clip", duration.String()).
 		WithField("url", clip_url).
@@ -521,6 +518,38 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 			"e2e":        time.Since(full_start).String(),
 		}).
 		Debug("audio chat handling done")
+}
+
+func (vc *Voice) isValidVoiceMessage(speakerID string, text string, speakingStart time.Time) bool {
+	// drop maltranslations (probably background static or something. idk whisper isn't perfect)
+	if strings.Contains(strings.ToLower(text), "aika, an ai chatbot.") {
+		return false
+	}
+	if strings.Contains(strings.ToLower(text), "aika, the ai chatbot") {
+		return false
+	}
+	if strings.Contains(strings.ToLower(text), "a voice message for aika") {
+		return false
+	}
+
+	// if the previous speaker talks again within 2 seconds key off that
+	timeSince := speakingStart.Sub(vc.aiSpeakStop)
+
+	if speakerID == vc.lastSpeaker && vc.lastSpeaker != "" {
+		/*logrus.
+		WithField("duration", timeSince.Seconds()).
+		Debugln("time since last talk")*/
+
+		if timeSince < (time.Second * 2) {
+			return true
+		}
+	}
+
+	if !strings.Contains(strings.ToLower(text), "aika") {
+		return false
+	}
+
+	return true
 }
 
 // stream the content to voice via TTS

@@ -31,6 +31,20 @@ ChatGPT powered waifu.
 - **Voice** chat integration
 - Youtube Music through Voice
 
+## Voice Chat
+
+You can chat with Aika in voice. 
+Join a channel Aika has permissions to and ask her to join you. 
+Once Aika joins, wait a second or two before talking to her.
+
+After speaking your message, your microphone must be silent for **1 second** for Aika to pick it up. 
+I recommend using Krisp to silence any background noise.
+
+Aika requires the keyword `Aika` be spoken in order to respond.
+After Aika responds, the speaker can continue the conversation without requiring the keyword *if* they start speaking within **2 seconds**.
+
+> Example: "Hey **Aika**, How Are you?"
+
 ## Developer Notes
 
 - Admin Commands
@@ -43,6 +57,7 @@ ChatGPT powered waifu.
 - TTS is streamed if ElevenLabs is used
 - Music cannot be stopped (for now)
 - Aika can talk while playing music
+- Aika gives 2s to reply before requiring "Aika" keyword.
 
 ## Run
 
@@ -66,5 +81,3 @@ Reduce voice interaction latency further
 Discord->Whisper streaming ?
 Investigate alternative transcription APIs
 Investigate PlayHT streaming APIs for latency
-
-make aika listen for 2s after replying only to the sender- this will let natural conversations flow
