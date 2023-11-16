@@ -151,15 +151,20 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			msgId = msg.ID
 		}
 
+		err = nil
 		if len(content) > 2000 {
-			s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(content))
+			_, err = s.ChannelFileSendWithMessage(m.ChannelID, "*response too long - sent as file*", "response.txt", strings.NewReader(content))
 		} else {
 			if msgId == "" {
-				s.ChannelMessageSend(m.ChannelID, content)
+				_, err = s.ChannelMessageSend(m.ChannelID, content)
 			} else {
-				s.ChannelMessageEdit(m.ChannelID, msgId, content)
+				_, err = s.ChannelMessageEdit(m.ChannelID, msgId, content)
 			}
 		}
+		if err != nil {
+			logrus.WithError(err).Errorln("failed to send final message edit")
+		}
+
 		return nil
 	})
 

@@ -532,24 +532,22 @@ func (vc *Voice) isValidVoiceMessage(speakerID string, text string, speakingStar
 		return false
 	}
 
-	// if the previous speaker talks again within 2 seconds key off that
-	timeSince := speakingStart.Sub(vc.aiSpeakStop)
+	// if user mentioned aika we can just exit here
+	if strings.Contains(strings.ToLower(text), "aika") {
+		return true
+	}
 
+	// if the previous speaker talks again within 5 seconds key off that
 	if speakerID == vc.lastSpeaker && vc.lastSpeaker != "" {
-		/*logrus.
-		WithField("duration", timeSince.Seconds()).
-		Debugln("time since last talk")*/
+		timeSince := speakingStart.Sub(vc.aiSpeakStop)
 
-		if timeSince < (time.Second * 2) {
+		if timeSince < (time.Second * 5) {
 			return true
 		}
+		logrus.WithField("duration", timeSince.Seconds()).Debugln("speaker took too long to reply")
 	}
 
-	if !strings.Contains(strings.ToLower(text), "aika") {
-		return false
-	}
-
-	return true
+	return false
 }
 
 // stream the content to voice via TTS

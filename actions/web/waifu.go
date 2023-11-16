@@ -25,7 +25,7 @@ var (
 )
 
 var definition_GetWaifuCategories = openai.FunctionDefinition{
-	Name:        "definition_GetWaifuCategories",
+	Name:        "GetWaifuCategories",
 	Description: "Returns available categories from waifu.pics, an anime image API.",
 	Parameters: jsonschema.Definition{
 		Type:       jsonschema.Object,
@@ -43,7 +43,7 @@ var definition_GetWaifuSfw = openai.FunctionDefinition{
 			"category": {
 				Type:        jsonschema.String,
 				Enum:        waifu_categories_sfw,
-				Description: "Category of anime image to return.",
+				Description: "Category of anime image to return. Use GetWaifuCategories to get available categories.",
 				Properties:  map[string]jsonschema.Definition{},
 			},
 		},
@@ -52,7 +52,7 @@ var definition_GetWaifuSfw = openai.FunctionDefinition{
 }
 var definition_GetWaifuNsfw = openai.FunctionDefinition{
 	Name:        "GetWaifuOther",
-	Description: "Returns an 'Other' anime waifu image from waifu.pics, an anime image API.",
+	Description: "Returns an 'Other' anime waifu image from waifu.pics, an anime image API. Use GetWaifuCategories to get available categories.",
 	Parameters: jsonschema.Definition{
 		Type: jsonschema.Object,
 		Properties: map[string]jsonschema.Definition{

@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+// TODO: make the buffer splitter character configurable
+// defaulting to `\n`
 type StringPipe struct {
 	buffer   bytes.Buffer
 	temp     bytes.Buffer
