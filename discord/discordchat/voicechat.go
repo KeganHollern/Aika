@@ -102,7 +102,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 	}
 	funcs = append(funcs, player.GetFunction_PlayAudio())
 
-	pipe := utils.NewStringPipe()
+	pipe := utils.NewStringPipe('|')
 
 	group := errgroup.Group{}
 	group.SetLimit(2)
@@ -478,14 +478,20 @@ func (vc *Voice) onSpeakingStop(speakerID string, packets []*discordgo.Packet) {
 
 			once.Do(func() { chat_first_latency = time.Since(chat_start) })
 
-			full_response += response + "\n"
+			full_response += response + "|"
 
 			if vc.Connection == nil {
 				continue // can't talk but need to drain speakChan
 			}
 
-			logrus.WithField("line", response).Debug("speaking message")
-			err = vc.streamSpeech(response)
+			clean_response := strings.TrimSpace(response)
+			if clean_response == "" {
+				logrus.Warnln("blank text cannot stream speach for")
+				continue // literally nothing to say
+			}
+
+			logrus.WithField("line", clean_response).Debug("speaking message")
+			err = vc.streamSpeech(clean_response)
 			if err != nil {
 				return fmt.Errorf("failed to stream tts; %w", err)
 			}
@@ -529,6 +535,9 @@ func (vc *Voice) isValidVoiceMessage(speakerID string, text string, speakingStar
 		return false
 	}
 	if strings.Contains(strings.ToLower(text), "a voice message for aika") {
+		return false
+	}
+	if strings.Contains(strings.ToLower(text), "is a voice message for ai chatbot") {
 		return false
 	}
 

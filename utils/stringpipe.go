@@ -6,20 +6,20 @@ import (
 	"sync"
 )
 
-// TODO: make the buffer splitter character configurable
-// defaulting to `\n`
 type StringPipe struct {
 	buffer   bytes.Buffer
 	temp     bytes.Buffer
 	dataCond *sync.Cond
 	closed   bool
+	splitter byte
 }
 
 var _ io.WriteCloser = &StringPipe{}
 
-func NewStringPipe() *StringPipe {
+func NewStringPipe(delim byte) *StringPipe {
 	return &StringPipe{
 		dataCond: sync.NewCond(&sync.Mutex{}),
+		splitter: delim,
 	}
 }
 
@@ -35,7 +35,7 @@ func (sp *StringPipe) Write(p []byte) (n int, err error) {
 	n, err = sp.temp.Write(p)
 
 	// Check for newline in the temporary buffer
-	if bytes.Contains(sp.temp.Bytes(), []byte{'\n'}) {
+	if bytes.Contains(sp.temp.Bytes(), []byte{sp.splitter}) {
 		sp.buffer.Write(sp.temp.Bytes())
 		sp.temp.Reset()
 		sp.dataCond.Signal()
@@ -50,7 +50,7 @@ func (sp *StringPipe) Read() (string, error) {
 	defer sp.dataCond.L.Unlock()
 
 	for {
-		line, err := sp.buffer.ReadString('\n')
+		line, err := sp.buffer.ReadString(sp.splitter)
 
 		if err == io.EOF {
 			if sp.closed {
@@ -80,7 +80,7 @@ func (sp *StringPipe) Close() error {
 
 	// Append a newline to flush any remaining characters.
 	if sp.temp.Len() > 0 {
-		sp.temp.Write([]byte{'\n'})
+		sp.temp.Write([]byte{sp.splitter})
 		sp.buffer.Write(sp.temp.Bytes())
 		sp.temp.Reset()
 	}

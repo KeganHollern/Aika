@@ -87,8 +87,6 @@ func (brain *AIBrain) ProcessChunked(
 			return nil, fmt.Errorf("failed to request openai; %w", err)
 		}
 
-		// MAYBE write `\n` to the writer ?
-
 		// push request message into history
 		newHistory = append(newHistory, message)
 		// push response into history

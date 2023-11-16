@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testChar = "|"
+
 func TestStringPipe(t *testing.T) {
 	assert := assert.New(t)
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -29,7 +31,7 @@ func TestStringPipe(t *testing.T) {
 	// Producer: Writes to StringPipe character by character
 	go func() {
 		for i := 0; i < 10; i++ {
-			for _, ch := range "data\n" {
+			for _, ch := range "data" + testChar {
 				_, err := sp.Write([]byte{byte(ch)})
 				assert.Nil(err, "Unexpected write error")
 				time.Sleep(time.Millisecond)
@@ -42,17 +44,17 @@ func TestStringPipe(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	sp := NewStringPipe()
-	n, err := sp.Write([]byte("hello\n"))
+	sp := NewStringPipe(testChar[0])
+	n, err := sp.Write([]byte("hello" + testChar))
 
 	assert.Nil(t, err)
 	assert.Equal(t, 6, n)
 }
 
 func TestRead(t *testing.T) {
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 	go func() {
-		sp.Write([]byte("hello\nworld\n"))
+		sp.Write([]byte("hello" + testChar + "world" + testChar))
 	}()
 
 	line, err := sp.Read()
@@ -65,9 +67,9 @@ func TestRead(t *testing.T) {
 }
 
 func TestRead2(t *testing.T) {
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 	go func() {
-		sp.Write([]byte(" \n\nhello\nworld\n"))
+		sp.Write([]byte(" " + testChar + "" + testChar + "hello" + testChar + "world" + testChar + ""))
 	}()
 	line, err := sp.Read()
 	assert.Nil(t, err)
@@ -87,12 +89,12 @@ func TestRead2(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 
 	err := sp.Close()
 	assert.Nil(t, err)
 
-	_, err = sp.Write([]byte("should fail\n"))
+	_, err = sp.Write([]byte("should fail" + testChar))
 	assert.Equal(t, io.ErrClosedPipe, err)
 
 	_, err = sp.Read()
@@ -103,10 +105,10 @@ func TestClose(t *testing.T) {
 }
 
 func TestConcurrentWriteRead(t *testing.T) {
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 	go func() {
 		time.Sleep(time.Millisecond * 50)
-		sp.Write([]byte("concurrent\n"))
+		sp.Write([]byte("concurrent" + testChar))
 	}()
 
 	line, err := sp.Read()
@@ -115,7 +117,7 @@ func TestConcurrentWriteRead(t *testing.T) {
 }
 
 func TestCloseFlushesRemainingCharacters(t *testing.T) {
-	sp := NewStringPipe()
+	sp := NewStringPipe(testChar[0])
 	go func() {
 		sp.Write([]byte("flush"))
 		sp.Close()
