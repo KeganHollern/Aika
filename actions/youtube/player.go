@@ -88,7 +88,7 @@ func (player *Player) action_PlayAudio(url string) error {
 		// might be able to close "stream" before we've reached EOF to kill it safely?
 
 		defer close(input)
-		err = transcoding.StreamMPEGToPCM(stream, 0.3, input)
+		err = transcoding.StreamMPEGToPCM(stream, 0.2, input)
 		if err != nil {
 			logrus.WithError(err).Errorln("failed to stream youtube video to PCM audio")
 		}
