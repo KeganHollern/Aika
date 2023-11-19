@@ -7,29 +7,34 @@
 ![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)
 ![DuckDuckGo](https://img.shields.io/badge/DuckDuckGo-DE5833?style=for-the-badge&logo=DuckDuckGo&logoColor=white)
 
-ChatGPT powered waifu.
+Aika is a ChatGPT powered anime waifu for Discord. She is a companion, an assistant, and a utility.
 
 ![Aika Kissing](./assets/example.png)
 
-<audio controls>
-    <source src="https://aika.lystic.zip/user-content/sample_clip.mp3" type="audio/mpeg">
-</audio
-
 > [Aika Talking](https://aika.lystic.zip/user-content/sample_clip.mp3)
 
-## User Features
+## Features
 
-- ChatGPT
-- DallE
-- Web Search
-- Waifu Image Gen
-- Random Number Gen
-- MyAnimeList Search
-- Can @ chat members
-- Youtube Search
-- Youtube Video Download
-- **Voice** chat integration
-- Youtube Music through Voice
+Aika is more than just a fun chat bot. She has functional integrations with many services and can chain these together to assist users in nearly any task. 
+
+Here is an exhaustive list of what she can do:
+- Text-based interaction via [ChatGPT](#)
+- Image generation via [Dall-E](#)
+- Basic web searching via [DuckDuckGo](#)
+- Acquire human-created waifu images via [Waifu.pics](#)
+- Random number generation
+- Anime lookup via [MyAnimeList](#)
+- Tag individual members in her messages (@ing)
+- Search [YouTube](#) for videos
+- Download [YouTube](#) videos to MP4
+- **Join voice chat and speak**
+- Play music in voice chat via [YouTube](#)
+
+Aika can chain any of these actions together as commanded and at will. For example:
+> "Aika join voice and play Never Gonna Give You Up."
+
+You can always ask Aika what functions she can use:
+> "Aika what functions can you use?"
 
 ## Voice Chat
 
@@ -45,21 +50,32 @@ After Aika responds, the speaker can continue the conversation without requiring
 
 > Example: "Hey **Aika**, How Are you?"
 
-## Developer Notes
+## Self Hosting
 
-- Admin Commands
-- DallE generations go to S3 storage
-- Dockerized for easy distribution
-- Guild and DM specific GPT version control
-- Guild and DM specific function control
-- Youtube 'downloads' go to S3 storage
-- Captured voice clips are saved on disk
-- TTS is streamed if ElevenLabs is used
-- Music cannot be stopped (for now)
-- Aika can talk while playing music
-- Aika gives 2s to reply before requiring "Aika" keyword.
+Running your own Aika-themed bot can be easy. 
 
-## Run
+1. Updated the [system messages](./discord/discordai/) with your own persona-themed ones.
+2. [Build](#build)
+3. [Run](#run)
+
+### Dependencies / APIs
+
+Aika requires a few depenedencies to operate.
+
+1. An [S3](#) compatible object store
+2. A [Discord Bot](#) API key
+3. An [OpenAI](#) API key
+4. An [ElevenLabs](#) API key
+
+### Build
+
+Aika is containerized via [Docker](#). No special build requirements are needed, simply use `docker build`
+
+```shell
+$ docker build -t mycustom/dockertag
+```
+
+### Run
 
 ```shell
 $ ./run.sh beta
@@ -69,15 +85,34 @@ $ ./run.sh beta
 
 ## TODO
 
-Add more admin commands
-Improve logging
-Token counting rather than history limit?
-Drop history after X hours? How can we be cost effective?
-"Reminder" function -- ask aika what she wants added
-Let aika pull photos of 'herself' from S3
-Improve youtube download
-Youtube->Music integration ?
-Reduce voice interaction latency further
-Discord->Whisper streaming ?
+Voice Chat & Audio Mixer Refactor (hacked in right now)
+
+GPT Vision support
+
+Add more guild & operator admin commands
+- let aika control guild as admin bot for guild owners?
+- let operator enable and disable "premium" guilds via chat
+- let operator overwrite system message at runtime
+- let operator force aika out of discords
+
+Improve rate limiting
+
+Further imrpovements to voice chat for natural interaction
+
+Token counting rather than history limit
+
+Drop history after X hours of inactivity / cost efficiency?
+
+Report/Track token usage by guild/user
+
+"Reminder / Alert" function so Aika can DM users @ specific times for specific things
+
+"Let aika pull photos of 'herself' from S3
+
+Improve youtube download for cost efficiency
+
+Reduce voice interaction latency further by streaming to Whisper ?
+
 Investigate alternative transcription APIs
-Investigate PlayHT streaming APIs for latency
+
+Investigate alternative TTS APIs (Like OAI and PlayHT)

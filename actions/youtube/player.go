@@ -15,6 +15,13 @@ import (
 
 type Player struct {
 	Mixer *transcoding.Mixer
+
+	//TODO:
+	// - enqueue songs if one is play
+	// - skip action
+	// - stop action
+	// - get queue (including current playing) action
+	// - remove X from queue action (-1 for clearing entire queue?)
 }
 
 func (player *Player) GetFunction_PlayAudio() discordai.Function {
