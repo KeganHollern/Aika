@@ -2,8 +2,6 @@ module aika
 
 go 1.21
 
-toolchain go1.21.1
-
 require (
 	github.com/aws/aws-sdk-go v1.45.19
 	github.com/buger/jsonparser v1.1.1

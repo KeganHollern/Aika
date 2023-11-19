@@ -15,6 +15,8 @@ type BytePipe struct {
 	cond   *sync.Cond
 }
 
+var _ io.ReadWriteCloser = &BytePipe{}
+
 // NewConcurrentBuffer initializes a new ConcurrentBuffer.
 func NewBytePipe() *BytePipe {
 	bp := &BytePipe{}

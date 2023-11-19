@@ -14,6 +14,8 @@ type StringPipe struct {
 	splitter byte
 }
 
+// TODO: implement io.Reader interface so it matches
+// the bytepipe implemented
 var _ io.WriteCloser = &StringPipe{}
 
 func NewStringPipe(delim byte) *StringPipe {

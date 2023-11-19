@@ -1,7 +1,6 @@
 package discordchat
 
 import (
-	"aika/actions/youtube"
 	"aika/ai"
 	"aika/discord/discordai"
 	"aika/utils"
@@ -90,17 +89,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 
 	logrus.WithField("system", system).Debugln("system voice message")
 
-	// TODO: we need to move this shit to "chat" or something this is rediculous
-	// append voice functionality
 	funcs := chat.getAvailableFunctions(chat.Session, speaker)
-	funcs = append(funcs, chat.GetFunction_LeaveChannel())
-	funcs = append(funcs, chat.GetFunction_GetVoices())
-	funcs = append(funcs, chat.GetFunction_SetVoice())
-	// append youtube functionality
-	player := &youtube.Player{
-		Mixer: chat.Mixer,
-	}
-	funcs = append(funcs, player.GetFunction_PlayAudio())
 
 	pipe := utils.NewStringPipe('|')
 

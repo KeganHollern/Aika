@@ -78,6 +78,7 @@ func (player *Player) action_PlayAudio(url string) error {
 	go func() {
 		// TODO: make a way to 'stop' playing lmao
 		//TODO: she doesn't send "start speaking" so idk whats up
+		// might be able to close "stream" before we've reached EOF to kill it safely?
 
 		defer close(input)
 		err = transcoding.StreamMPEGToPCM(stream, 0.3, input)

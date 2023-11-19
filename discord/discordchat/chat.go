@@ -34,6 +34,49 @@ type Chat struct {
 
 	// internal voice chat connection for this
 	voice *Voice
+
+	// internal command structers
+	actions chatActions
+}
+
+type chatActions struct {
+	downloader *youtube.Downloader
+	player     *youtube.Player
+	dalle      *action_openai.DallE
+	guilds     *discord.Guilds
+}
+
+// initializes chatActions
+// kinda scuffed but this'll help ensure actions
+// with structs maintain some data between
+// api calls / chats
+func (c *Chat) initActions(s *discordgo.Session) {
+	if c.actions.dalle == nil {
+		c.actions.dalle = &action_openai.DallE{
+			Client: c.Brain.OpenAI,
+			S3:     c.S3,
+		}
+	}
+
+	if c.actions.downloader == nil {
+		c.actions.downloader = &youtube.Downloader{
+			S3: c.S3,
+		}
+	}
+
+	if c.actions.guilds == nil && s != nil {
+		c.actions.guilds = &discord.Guilds{
+			Session: s,
+		}
+	}
+
+	// if voice is enabled init the player actions
+	if c.voice != nil && c.actions.player == nil {
+		c.actions.player = &youtube.Player{
+			Mixer: c.voice.Mixer,
+		}
+	}
+
 }
 
 func (c *Chat) getInternalArgs(
@@ -164,35 +207,30 @@ func (c *Chat) getAvailableFunctions(
 		web.Function_GetAnime,
 	}
 
-	// openAI stuff
-	oai := &action_openai.DallE{
-		Client: c.Brain.OpenAI,
-		S3:     c.S3,
-	}
-	functions = append(functions, oai.GetFunction_DallE())
+	// initialize any uninitialized actions
+	c.initActions(s)
 
-	// youtube stuff
-	// TODO: these structs can't be constructed every function call
-	// instead they need cached on the Chat object :)
-	yt := &youtube.Downloader{
-		S3: c.S3,
-	}
-	functions = append(functions, yt.GetFunction_SaveYoutube())
+	// add action functions
+	functions = append(functions, c.actions.dalle.GetFunction_DallE())
+	functions = append(functions, c.actions.downloader.GetFunction_SaveYoutube())
 
 	// admin commands
 	if c.isAdmin(user.ID) {
-		g := &discord.Guilds{
-			Session: s,
-		}
-		functions = append(functions, g.GetFunction_ListGuilds())
+		functions = append(functions, c.actions.guilds.GetFunction_ListGuilds())
 	}
 
 	//-- add functions to tell aika to leave/join voice chat
+
+	// this is non-nill when C is a voice chat or has a voice chat associated
+	// if c is a voice chat then c.voice == c
 	if c.voice != nil {
-		player := &youtube.Player{
-			Mixer: c.voice.Mixer,
-		}
-		functions = append(functions, player.GetFunction_PlayAudio())
+		// idea of how to check if this command
+		// is coming from a voice speaker / voice chat
+		/* if c.voice == c {
+			// this is a voice chat
+		} */
+
+		functions = append(functions, c.actions.player.GetFunction_PlayAudio())
 
 		// admin OR subscriber
 		// chatID is always guildID when voice is non nil
@@ -233,4 +271,9 @@ func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
 		// google free-to-use TTS
 		// Speaker: &voice.Google{},
 	}
+
+	// this is scuffed but it will ensure that the _voice_ chat points to itself
+	// this will make voice chat functions available to both
+	// the source chat and the voice channel
+	chat.voice.voice = chat.voice
 }
