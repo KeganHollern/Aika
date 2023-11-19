@@ -63,9 +63,9 @@ Aika requires the keyword `Aika` be spoken in order to respond.
 > "Hey **Aika**, How Are you?"
 
 When she is responding to **you**, you can continue the conversation naturally by replying back to her within **5 seconds**.
-> You: "Hi **Aika**!"
-> Aika: "Hi..."
-> You: "How are you?"
+> You: "Hi **Aika**!"\
+> Aika: "Hi..."\
+> You: "How are you?"\
 > Aika: "Good...."
 
 Aika uses voice activity. Hotmicing, or having an open microphone with background noise, causes a lot of problems with communication.
