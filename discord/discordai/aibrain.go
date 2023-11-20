@@ -114,7 +114,7 @@ func (brain *AIBrain) ProcessChunked(
 			// if not - for loop will exit eventually
 			logrus.WithField("call", res.FunctionCall).Warnln("openai tried to call non-existant function")
 			failedFuncCall = true
-			result = fmt.Sprintf("the function '%s' does not exist.", name)
+			result = fmt.Sprintf("The function '%s' does not exist. Remember to only call real functions. Please reply to the original message", name)
 		} else {
 
 			failedFuncCall = false
@@ -226,7 +226,7 @@ func (brain *AIBrain) Process(
 			// if not - for loop will exit eventually
 			logrus.WithField("call", res.FunctionCall).Warnln("openai tried to call non-existant function")
 			failedFuncCall = true
-			result = fmt.Sprintf("the function '%s' does not exist.", name)
+			result = fmt.Sprintf("The function '%s' does not exist. Remember to only call real functions. Please reply to the original message", name)
 		} else {
 
 			failedFuncCall = false
@@ -276,10 +276,13 @@ func (brain *AIBrain) BuildSystemMessage(
 	displayNames []string,
 	mentions []string,
 ) openai.ChatCompletionMessage {
-	memberNames := strings.Join(displayNames, ", ")
-	memberMentions := strings.Join(mentions, ", ")
 
-	system := fmt.Sprintf(sys, memberNames, memberMentions)
+	systemParticipants := ""
+	for i, name := range displayNames {
+		systemParticipants += fmt.Sprintf("  - name: %s\n    tag_with: \"%s\"\n", name, mentions[i])
+	}
+
+	system := fmt.Sprintf(sys, systemParticipants)
 	logrus.WithField("system", system).Debugln("system message")
 
 	return openai.ChatCompletionMessage{

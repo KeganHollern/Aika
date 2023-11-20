@@ -36,14 +36,26 @@ func (chat *Guild) OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, err.Error())
 		return
 	}
+
+	sender := &ChatParticipant{User: m.Author}
+	foundSender := false
+
 	memberNames := []string{}
 	memberMentions := []string{}
 	for _, member := range members {
+		if member.User.ID == sender.User.ID {
+			foundSender = true
+		}
 		memberNames = append(memberNames, member.GetDisplayName())
 		memberMentions = append(memberMentions, member.GetMentionString())
 	}
-
-	sender := &ChatParticipant{User: m.Author}
+	// this appends the sender details to the list
+	// of known participants
+	// this will fix @ing the
+	if !foundSender {
+		memberNames = append(memberNames, sender.GetDisplayName())
+		memberMentions = append(memberMentions, sender.GetMentionString())
+	}
 
 	system := chat.Brain.BuildSystemMessage(memberNames, memberMentions)
 	history := chat.getHistory(m.ChannelID)
