@@ -70,6 +70,17 @@ When she is responding to **you**, you can continue the conversation naturally b
 Aika uses voice activity. Hotmicing, or having an open microphone with background noise, causes a lot of problems with communication.
 I recommend using Krisp to silence any background noise.
 
+## Vision
+
+Aika has vision integration. She can see images you share with her & interact with them!
+
+Image details are embedded in Aika's context window. This means Aika can use image details throughout the conversation.
+
+<img width="800px" src="https://aika.lystic.zip/cool_image.jpg"/>
+
+Images can be attached or linked to. When linking to images, a direct link _must_ be used for all services _except_ for Tenor.
+Discord's built in GIF selection works with Aika.
+
 ## Self Hosting
 
 Running your own Aika-themed bot can be easy. 

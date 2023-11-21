@@ -158,8 +158,9 @@ func (request *VisionRequest) Send(ctx context.Context) (openai.ChatCompletionMe
 	resp, err := request.Client.CreateChatCompletion(
 		ctx,
 		openai.ChatCompletionRequest{
-			Model:    string(request.Model),
-			Messages: messages,
+			MaxTokens: 1024,
+			Model:     string(request.Model),
+			Messages:  messages,
 		},
 	)
 	if err != nil {

@@ -217,8 +217,8 @@ func (c *Chat) getAvailableFunctions(
 	c.initActions(s)
 
 	// add action functions
-	functions = append(functions, c.actions.dalle.GetFunction_DallE())
 	functions = append(functions, c.actions.vision.GetFunction_DescribeImage())
+	functions = append(functions, c.actions.dalle.GetFunction_DallE())
 	functions = append(functions, c.actions.downloader.GetFunction_SaveYoutube())
 
 	// admin commands

@@ -119,12 +119,14 @@ func (bot *ChatBot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 
 	imgs := []string{}
 	for _, att := range m.Attachments {
-		if att.ContentType == "image/png" {
+		if att.ContentType == "image/png" || att.ContentType == "image/jpeg" {
 			if len(imgs) == 0 {
 				m.Content += "\n*user attached images to their message*:\n"
 			}
 			m.Content += "- " + att.URL
 			imgs = append(imgs, att.URL)
+		} else {
+			logrus.WithField("content-type", att.ContentType).Debugln("unknown attachment type")
 		}
 	}
 
