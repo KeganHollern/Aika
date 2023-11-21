@@ -47,7 +47,7 @@ She loves tagging people in her messages:
 
 ## Voice Chat
 
-She has a voice! You can talk to her. I talk to her every day...
+She has a voice! You can talk to her. I talk to her every day... ([Click Here to Listen](https://aika.lystic.zip/user-content/sample_clip.mp3))
 
 While in voice chat, she has all the same functionality as in text chat.
 Her average response time is **less than 2 seconds**. 
