@@ -9,9 +9,9 @@
 
 Aika is a ChatGPT powered anime waifu for Discord. She is a companion, an assistant, and a utility.
 
-![Aika Kissing](./assets/example.png)
+<img width="400px" src="https://aika.lystic.zip/Screenshot%202023-11-20%20at%207.00.40%20PM.png"/>
 
-> [Aika Talking](https://aika.lystic.zip/user-content/sample_clip.mp3)
+[Click Here](https://aika.lystic.zip/user-content/sample_clip.mp3) to listen to Aika speak.
 
 ## Features
 
