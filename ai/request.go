@@ -121,18 +121,51 @@ func (request *ChatRequest) Stream(ctx context.Context, writer io.Writer) (opena
 // calling an action like "RequestImageDetails: 'what text is in the image?'"- so they have a generic description like 'a paper w/ writing on it'
 // and can ask for more details of that image like 'what is written on the paper?' ect.
 
-type ImageDescriptionRequest struct {
+type VisionRequest struct {
 	Client *openai.Client
 
-	Message openai.ChatCompletionMessage
+	System openai.ChatCompletionMessage // vision brain
+
+	//TODO: do we need history in this request?
+
+	Message  string // request - "gen desc", "what text is"
+	ImageURL string // image url - see https://platform.openai.com/docs/guides/vision
 
 	Model VisionModel
 }
 
-func (request *VisionModel) Send(ctx context.Context) (openai.ChatCompletionMessage, error) {
-	//TODO: introduce
-	return openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleAssistant,
-		Content: "image descriptions are not yet supported",
-	}, nil
+func (request *VisionRequest) Send(ctx context.Context) (openai.ChatCompletionMessage, error) {
+	messages := []openai.ChatCompletionMessage{
+		request.System,
+		{
+			Role: openai.ChatMessageRoleUser,
+			MultiContent: []openai.ChatMessagePart{
+				{
+					Type: openai.ChatMessagePartTypeText,
+					Text: request.Message,
+				},
+				{
+					Type: openai.ChatMessagePartTypeImageURL,
+					ImageURL: &openai.ChatMessageImageURL{
+						URL:    request.ImageURL,
+						Detail: openai.ImageURLDetailAuto,
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := request.Client.CreateChatCompletion(
+		ctx,
+		openai.ChatCompletionRequest{
+			Model:    string(request.Model),
+			Messages: messages,
+		},
+	)
+	if err != nil {
+		return openai.ChatCompletionMessage{}, fmt.Errorf("failed to query openai; %w", err)
+
+	}
+
+	return resp.Choices[0].Message, nil
 }

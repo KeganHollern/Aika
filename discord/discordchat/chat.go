@@ -43,6 +43,7 @@ type chatActions struct {
 	downloader *youtube.Downloader
 	player     *youtube.Player
 	dalle      *action_openai.DallE
+	vision     *action_openai.Vision
 	guilds     *discord.Guilds
 }
 
@@ -55,6 +56,11 @@ func (c *Chat) initActions(s *discordgo.Session) {
 		c.actions.dalle = &action_openai.DallE{
 			Client: c.Brain.OpenAI,
 			S3:     c.S3,
+		}
+	}
+	if c.actions.vision == nil {
+		c.actions.vision = &action_openai.Vision{
+			Client: c.Brain.OpenAI,
 		}
 	}
 
@@ -212,6 +218,7 @@ func (c *Chat) getAvailableFunctions(
 
 	// add action functions
 	functions = append(functions, c.actions.dalle.GetFunction_DallE())
+	functions = append(functions, c.actions.vision.GetFunction_DescribeImage())
 	functions = append(functions, c.actions.downloader.GetFunction_SaveYoutube())
 
 	// admin commands

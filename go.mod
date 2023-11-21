@@ -23,6 +23,9 @@ require (
 	layeh.com/gopus v0.0.0-20210501142526-1ee02d434e32
 )
 
+// waiting on https://github.com/sashabaranov/go-openai/pull/580
+replace github.com/sashabaranov/go-openai => github.com/rkintzi/go-openai v0.0.0-20231115154728-152021253721
+
 require (
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect

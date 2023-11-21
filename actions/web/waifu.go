@@ -111,8 +111,7 @@ var waifu_categories_nsfw = []string{
 }
 
 type waifuResponse struct {
-	URL     *string `json:"url",omitempty`
-	Message *string `json:"message",omitempty`
+	URL *string `json:"url",omitempty`
 }
 
 func handler_GetWaifuSfw(msgMap map[string]interface{}) (string, error) {

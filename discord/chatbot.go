@@ -117,6 +117,17 @@ func (bot *ChatBot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) 
 		return
 	}
 
+	imgs := []string{}
+	for _, att := range m.Attachments {
+		if att.ContentType == "image/png" {
+			if len(imgs) == 0 {
+				m.Content += "\n*user attached images to their message*:\n"
+			}
+			m.Content += "- " + att.URL
+			imgs = append(imgs, att.URL)
+		}
+	}
+
 	if m.GuildID == "" {
 		// direct message
 		dchat, exists := bot.DirectChats[m.ChannelID]
