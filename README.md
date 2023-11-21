@@ -118,8 +118,6 @@ $ ./run.sh beta
 
 Voice Chat & Audio Mixer Refactor (hacked in right now)
 
-GPT Vision support
-
 Add more guild & operator admin commands
 - let aika control guild as admin bot for guild owners?
 - let operator enable and disable "premium" guilds via chat
