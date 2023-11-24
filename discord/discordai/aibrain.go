@@ -243,6 +243,10 @@ func (brain *AIBrain) Process(
 				args[k] = v
 			}
 
+			logrus.WithField("call", res.FunctionCall).Debugln("executing function...")
+
+			//TODO: context expiration for function calls
+
 			// call handler (runs function and gets result for openai!)
 			result, err = handler(args)
 			if err != nil {
