@@ -173,8 +173,6 @@ Investigate alternative TTS APIs (Like OAI and PlayHT)
 operator-controlled runtime voice cloning
 - "aika sound like X" -> she clones Xs voice and starts using it immediately
 
-Fix bugs with aika @ing the wrong person
-
 Aika currently leaves voice chat without speaking, maybe fix this?
 - would require some weird hacky action integration w/ voice chats to prevent the action from actually running until after she finishes speaking. Something like a "run after replying" ability ?
 
