@@ -108,11 +108,17 @@ $ docker build -t mycustom/dockertag
 
 ### Run
 
+1. Create a data folder
+```shell
+$ mkdir data
+```
+2. Copy the [config](./data/config.yaml) into that data folder. Edit as needed.
+3. Set the required environment variables.\
+*see [run.sh](./run.sh) for environment variables.*
+4. Run via the run script.
 ```shell
 $ ./run.sh beta
 ```
-
-*see [run.sh](./run.sh) for environment variables required.*
 
 ## TODO
 

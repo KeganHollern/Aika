@@ -1,7 +1,7 @@
 #!/bin/bash
 
 docker run \
-        -v ${PWD}/premium-servers:/aika/premium-servers \
+        -v ${PWD}/data:/aika/data \
         -e S3_ACCESS=${S3_ACCESS} \
         -e S3_SECRET=${S3_SECRET} \
         -e S3_BUCKET=${S3_BUCKET} \
