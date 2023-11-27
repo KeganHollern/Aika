@@ -115,7 +115,8 @@ $ mkdir data
 2. Copy the [config](./data/config.yaml) into that data folder. Edit as needed.
 3. Set the required environment variables.\
 *see [run.sh](./run.sh) for environment variables.*
-4. Run via the run script.
+4. Run via the run script.\
+*if building a custom iamge, update the script with your own image.*
 ```shell
 $ ./run.sh beta
 ```
