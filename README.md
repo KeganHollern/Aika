@@ -17,17 +17,17 @@ Aika is a ChatGPT powered anime waifu for Discord. She is a companion, an assist
 Aika is more than just a fun chat bot. She has functional integrations with many services and can chain these together to assist users in nearly any task. 
 
 Here is an exhaustive list of what she can do:
-- Text-based interaction via [ChatGPT](#)
-- Image generation via [Dall-E](#)
-- Basic web searching via [DuckDuckGo](#)
-- Acquire human-created waifu images via [Waifu.pics](#)
+- Text-based interaction via [ChatGPT](https://platform.openai.com/docs/guides/text-generation/chat-completions-api)
+- Image generation via [Dall-E](https://platform.openai.com/docs/guides/images/introduction)
+- Basic web searching via [DuckDuckGo](https://duckduckgo.com/)
+- Acquire human-created waifu images via [Waifu.pics](https://waifu.pics/)
 - Random number generation
-- Anime lookup via [MyAnimeList](#)
+- Anime lookup via [MyAnimeList](https://myanimelist.net/)
 - Tag individual members in her messages (@ing)
-- Search [YouTube](#) for videos
-- Download [YouTube](#) videos to MP4
+- Search [YouTube](https://www.youtube.com/) for videos
+- Download [YouTube](https://www.youtube.com/) videos to MP4
 - **Join voice chat and speak**
-- Play music in voice chat via [YouTube](#)
+- Play music in voice chat via [YouTube](https://www.youtube.com/)
 
 Aika can chain any of these actions together as commanded and at will. For example:
 > You: "Aika join voice and play Never Gonna Give You Up."\
@@ -93,14 +93,14 @@ Running your own Aika-themed bot can be easy.
 
 Aika requires a few depenedencies to operate.
 
-1. An [S3](#) compatible object store
-2. A [Discord Bot](#) API key
-3. An [OpenAI](#) API key
-4. An [ElevenLabs](#) API key
+1. An [S3](https://aws.amazon.com/s3/) compatible object store
+2. A [Discord Bot](https://discord.com/developers/docs/getting-started) API key
+3. An [OpenAI](https://platform.openai.com/docs/quickstart/account-setup) API key
+4. An [ElevenLabs](https://elevenlabs.io/) API key
 
 ### Build
 
-Aika is containerized via [Docker](#). No special build requirements are needed, simply use `docker build`
+Aika is containerized via [Docker](https://www.docker.com/). No special build requirements are needed, simply use `docker build`
 
 ```shell
 $ docker build -t mycustom/dockertag
