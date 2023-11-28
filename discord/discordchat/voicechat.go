@@ -108,7 +108,7 @@ func (chat *Voice) streamResponse(speaker *discordgo.User, msg string, output ch
 			history,
 			message,
 			funcs,
-			ai.LanguageModel_GPT4,
+			ai.LanguageModel_GPT4T, // voice must use turbo model
 			chat.getInternalArgs(chat.Session, speaker, chat.ChatID, chat.Connection.ChannelID),
 		)
 		if err != nil {
