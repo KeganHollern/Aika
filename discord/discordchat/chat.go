@@ -113,12 +113,12 @@ func (c *Chat) getInternalArgs(
 func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageModel {
 	// premium chats get GPT4
 	if c.isSubscriber(guildID) {
-		return ai.LanguageModel_GPT4
+		return ai.LanguageModel_GPT4T
 	}
 
 	// admins
 	if c.isAdmin(senderID) {
-		return ai.LanguageModel_GPT4
+		return ai.LanguageModel_GPT4T
 	}
 
 	return ai.LanguageModel_GPT35
