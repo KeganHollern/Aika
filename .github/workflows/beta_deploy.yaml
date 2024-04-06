@@ -26,4 +26,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: keganhollern/aika:beta
+          tags: |
+            keganhollern/aika:latest
+            keganhollern/aika:beta
