@@ -95,7 +95,7 @@ Keep your reply condensed and avoid lists.`,
 		},
 		Message:  query,
 		ImageURL: image,
-		Model:    ai.VisionModel_GPT4,
+		Model:    ai.VisionModel_GPT4o,
 	}
 	response, err := req.Send(context.Background())
 	if err != nil {
