@@ -121,7 +121,7 @@ func (c *Chat) getLanguageModel(senderID string, guildID string) ai.LanguageMode
 		return ai.LanguageModel_GPT4o
 	}
 
-	return ai.LanguageModel_GPT35
+	return ai.LanguageModel_GPT4o_mini
 }
 
 func (c *Chat) isSubscriber(guildID string) bool {

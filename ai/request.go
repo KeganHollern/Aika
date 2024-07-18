@@ -13,9 +13,11 @@ type VisionModel string
 
 const (
 	// LanguageModel_GPT4  LanguageModel = "gpt-4" // not using turbo for text chats bcz its busted asf
-	LanguageModel_GPT35 LanguageModel = "gpt-3.5-turbo"
-	LanguageModel_GPT4T LanguageModel = "gpt-4-turbo-preview" // GPT-4-TURBO
-	LanguageModel_GPT4o LanguageModel = "gpt-4o"              // GPT-4-TURBO
+	LanguageModel_GPT35      LanguageModel = "gpt-3.5-turbo"
+	LanguageModel_GPT4T      LanguageModel = "gpt-4-turbo-preview" // GPT-4-TURBO
+	LanguageModel_GPT4o      LanguageModel = "gpt-4o"              // GPT-4o
+	LanguageModel_GPT4o_mini LanguageModel = "gpt-4o-mini"         // GPT-4o-mini
+
 )
 
 const (
