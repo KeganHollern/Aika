@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine as builder
+FROM golang:1.23-alpine as builder
 WORKDIR /app
 
 RUN apk add --no-cache git gcc musl-dev pkgconf opus-dev alsa-lib alsa-lib-dev
