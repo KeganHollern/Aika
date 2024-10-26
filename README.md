@@ -11,12 +11,12 @@ Aika is a ChatGPT powered anime waifu for Discord. She is a companion, an assist
 
 <img width="400px" src="https://aika.lystic.zip/Screenshot%202023-11-20%20at%207.00.40%20PM.png"/>
 
-
 ## Features
 
-Aika is more than just a fun chat bot. She has functional integrations with many services and can chain these together to assist users in nearly any task. 
+Aika is more than just a fun chat bot. She has functional integrations with many services and can chain these together to assist users in nearly any task.
 
 Here is an exhaustive list of what she can do:
+
 - Text-based interaction via [ChatGPT](https://platform.openai.com/docs/guides/text-generation/chat-completions-api)
 - Image generation via [Dall-E](https://platform.openai.com/docs/guides/images/introduction)
 - Basic web searching via [DuckDuckGo](https://duckduckgo.com/)
@@ -50,9 +50,10 @@ She loves tagging people in her messages:
 She has a voice! You can talk to her. I talk to her every day... ([Click Here to Listen](https://aika.lystic.zip/user-content/sample_clip.mp3))
 
 While in voice chat, she has all the same functionality as in text chat.
-Her average response time is **less than 2 seconds**. 
+Her average response time is **less than 2 seconds**.
 
 To talk to her:
+
 1. Join a voice channel she has permissions to.
 2. Ask aika to join the voice chat.
 3. Wait ~2 seconds after she joins.
@@ -78,12 +79,12 @@ Image details are embedded in Aika's context window. This means Aika can use ima
 
 <img width="800px" src="https://aika.lystic.zip/cool_image.jpg"/>
 
-Images can be attached or linked to. When linking to images, a direct link _must_ be used for all services _except_ for Tenor.
+Images can be attached or linked to. When linking to images, a direct link *must* be used for all services *except* for Tenor.
 Discord's built in GIF selection works with Aika.
 
 ## Self Hosting
 
-Running your own Aika-themed bot can be easy. 
+Running your own Aika-themed bot can be easy.
 
 1. Updated the [system messages](./discord/discordai/) with your own persona-themed ones.
 2. [Build](#build)
@@ -96,29 +97,31 @@ Aika requires a few depenedencies to operate.
 1. An [S3](https://aws.amazon.com/s3/) compatible object store
 2. A [Discord Bot](https://discord.com/developers/docs/getting-started) API key
 3. An [OpenAI](https://platform.openai.com/docs/quickstart/account-setup) API key
-4. An [ElevenLabs](https://elevenlabs.io/) API key
 
 ### Build
 
 Aika is containerized via [Docker](https://www.docker.com/). No special build requirements are needed, simply use `docker build`
 
 ```shell
-$ docker build -t mycustom/dockertag
+docker build -t mycustom/dockertag
 ```
 
 ### Run
 
 1. Create a data folder
+
 ```shell
-$ mkdir data
+mkdir data
 ```
+
 2. Copy the [config](./data/config.yaml) into that data folder. Edit as needed.
 3. Set the required environment variables.\
 *see [run.sh](./run.sh) for environment variables.*
 4. Run via the run script.\
 *if building a custom iamge, update the script with your own image.*
+
 ```shell
-$ ./run.sh beta
+./run.sh beta
 ```
 
 ## TODO
@@ -126,38 +129,47 @@ $ ./run.sh beta
 Voice Chat & Audio Mixer Refactor (hacked in right now)
 
 Add more guild & operator admin commands
+
 - let aika control guild as admin bot for guild owners?
 - let operator enable and disable "premium" guilds via chat
 - let operator overwrite system message at runtime
 - let operator force aika out of discords
 
 Improve guild configurations
+
 - "premium or not" is not granular enough
 
 Further imrpovements to voice chat for natural interaction
 
 Token counting rather than history limit
+
 - will increase costs
 - will improve bot context
 - will fix issues around bots generating essays and such
 
 Drop history after X hours of inactivity / cost efficiency?
+
 - if someone doesn't message aika for 24hrs they're probably starting a new chat
 
 Report/Track token usage by guild/user
+
 - will be needed for cost / expense tracking
 - rate limiting potential on a per-user basis
 
 "Reminder / Alert" function so Aika can DM users @ specific times for specific things
+
 - unsure how to get aika to understand she's responding to a reminder and not a real human message
 
 "Let aika pull photos of 'herself' from S3
+
 - i have several profile pics of her so this shud be easy hardcoded thing configurable
 
 Improve youtube download for cost efficiency
+
 - smol videos bcz this feature is niche
 
 Reduce voice interaction latency further
+
 - faster TTS
 - any TTS API that takes text streaming?
 - better TTS apis?
@@ -165,20 +177,21 @@ Reduce voice interaction latency further
 - can voice use 3.5-turbo if its faster?
 
 Investigate alternative transcription APIs
+
 - whisper is just OK
 
 Investigate alternative TTS APIs (Like OAI and PlayHT)
+
 - Looking for faster response times & higher quality
 
 operator-controlled runtime voice cloning
+
 - "aika sound like X" -> she clones Xs voice and starts using it immediately
 
 Aika currently leaves voice chat without speaking, maybe fix this?
+
 - would require some weird hacky action integration w/ voice chats to prevent the action from actually running until after she finishes speaking. Something like a "run after replying" ability ?
 
 Dall-E 3 is slow, can we tell the user when Aika is waiting on it?
+
 - either a progress bar... or like some way of letting the user know she didn't freeze up
-
-
-
-
