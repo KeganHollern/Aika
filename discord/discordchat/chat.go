@@ -12,7 +12,6 @@ import (
 	"aika/voice"
 	"context"
 	"errors"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -270,10 +269,15 @@ func (chat *Chat) InitVoiceChat(s *discordgo.Session) {
 		Connection: nil,
 		Session:    s, // ???? TODO can we get rid of this?
 
-		Speaker: &voice.ElevenLabs{
-			ApiKey:  os.Getenv("ELEVENLABS_APIKEY"),
-			VoiceID: "BreKkXSwy4hr1vgm7ZqX",
+		Speaker: &voice.OpenAI{
+			Client:  chat.Brain.OpenAI,
+			VoiceID: openai.VoiceAlloy,
 		},
+		// elevenlabs TTS
+		// Speaker: &voice.ElevenLabs{
+		// 	ApiKey:  os.Getenv("ELEVENLABS_APIKEY"),
+		// 	VoiceID: "BreKkXSwy4hr1vgm7ZqX",
+		// },
 
 		// google free-to-use TTS
 		// Speaker: &voice.Google{},

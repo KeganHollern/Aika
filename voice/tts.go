@@ -7,9 +7,6 @@ import (
 )
 
 type TTS interface {
-	// TextToSpeech converts text to speech and saves the
-	// generated audio to an MP3 file in the out directory.
-	TextToSpeech(text string, outdir string) (string, error)
 	// TextToSpeechStream converts text to speech and
 	// writes the generated audio to the io.Writer in MP3
 	// format
